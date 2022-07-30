@@ -6,9 +6,12 @@ use pasta_curves::arithmetic::*;
 use rayon::join;
 use utils::{butterfly_arithmetic, swap_bit_reverse};
 
+// classic fft structure
 #[derive(Clone, Debug)]
 pub struct ClassicFft<G: Group> {
+    // polynomial degree 2^k
     k: u32,
+    // generator which generates order 2^{k - 1} multiplicative group used as twiddle factors
     multiplicative_generator: G::Scalar,
 }
 
@@ -24,12 +27,14 @@ impl<G: Group> ClassicFft<G> {
         }
     }
 
+    // perform classic fft
     pub fn fft(self, coeffs: &mut [G]) {
         let n = 1 << self.k;
-
         assert_eq!(coeffs.len(), n);
 
         swap_bit_reverse(coeffs, n, self.k);
+
+        // precompute twiddle factors
         let twiddle_factors: Vec<_> = (0..(n / 2) as usize)
             .scan(G::Scalar::one(), |w, _| {
                 let tw = *w;
@@ -42,6 +47,7 @@ impl<G: Group> ClassicFft<G> {
     }
 }
 
+// classic fft using divide and conquer algorithm
 fn classic_fft<G: Group>(coeffs: &mut [G], n: usize, twiddle_chunk: usize, twiddles: &[G::Scalar]) {
     if n == 2 {
         let t = coeffs[1];

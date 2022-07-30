@@ -1,5 +1,5 @@
-# ECFFT Utils
-The libraries related to [`ECFFT`](https://arxiv.org/pdf/2107.08473.pdf).
+# ECFFT
+[`ECFFT`](https://arxiv.org/pdf/2107.08473.pdf) implementation and benchmark optimized by [`rayon`](https://github.com/rayon-rs/rayon).
 
 ## Abstract
 When performing the polynomials multiplication by traditional FFT, it's necessary to find the multiplicative group $G: |G| = n = 2^k$ satisfying $n\ |\ p - 1$.
