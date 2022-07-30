@@ -32,10 +32,10 @@ mod tests {
             // order(nlogn) classic fft multiplication
             poly_a.resize(1<<k, Fp::zero());
             poly_b.resize(1<<k, Fp::zero());
-            classic_fft.fft(&mut poly_a);
-            classic_fft.fft(&mut poly_b);
+            classic_fft.dft(&mut poly_a);
+            classic_fft.dft(&mut poly_b);
             let mut poly_d = point_multiply(poly_a, poly_b);
-            classic_fft.ifft(&mut poly_d);
+            classic_fft.idft(&mut poly_d);
 
             assert_eq!(poly_c, poly_d)
         }
