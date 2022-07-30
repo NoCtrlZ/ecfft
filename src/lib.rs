@@ -1,12 +1,14 @@
-mod naive;
 mod classic_fft;
+mod common;
+mod naive;
 
-pub use naive::evaluate;
 pub use classic_fft::ClassicFft;
+pub use common::point_multiply;
+pub use naive::{evaluate, naive_multiply};
 
 #[cfg(test)]
 mod tests {
-    use super::ClassicFft;
+    use super::{naive_multiply, point_multiply, ClassicFft};
     use ff::Field;
     use pasta_curves::Fp;
     use proptest::prelude::*;
@@ -14,22 +16,6 @@ mod tests {
 
     fn arb_poly(k: u32) -> Vec<Fp> {
         (0..(1 << k)).map(|_| Fp::random(OsRng)).collect::<Vec<_>>()
-    }
-
-    // order(n^2) coefficients multiplication
-    fn naive_multiply(a: Vec<Fp>, b: Vec<Fp>) -> Vec<Fp> {
-        let mut c = vec![Fp::zero(); a.len() + b.len()];
-        a.iter().enumerate().for_each(|(i_a, coeff_a)| {
-            b.iter().enumerate().for_each(|(i_b, coeff_b)| {
-                c[i_a + i_b] += coeff_a * coeff_b;
-            })
-        });
-        c
-    }
-
-    // order(n) point multiplication
-    fn point_multiply(a: Vec<Fp>, b: Vec<Fp>) -> Vec<Fp> {
-        a.iter().zip(b.iter()).map(|(a, b)| a * b).collect()
     }
 
     proptest! {
