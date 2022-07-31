@@ -63,7 +63,7 @@ impl<G: Group> ClassicFft<G> {
 
         swap_bit_reverse(coeffs, n, self.k);
 
-        fft_arithmetic(coeffs, n, 1, &self.twiddle_factors)
+        classic_fft_arithmetic(coeffs, n, 1, &self.twiddle_factors)
     }
 
     // perform classic inverse discrete fourier transform
@@ -73,7 +73,7 @@ impl<G: Group> ClassicFft<G> {
 
         swap_bit_reverse(coeffs, n, self.k);
 
-        fft_arithmetic(coeffs, n, 1, &self.inv_twiddle_factors);
+        classic_fft_arithmetic(coeffs, n, 1, &self.inv_twiddle_factors);
         coeffs
             .par_iter_mut()
             .for_each(|coeff| coeff.group_scale(&self.n_inv))
@@ -81,7 +81,7 @@ impl<G: Group> ClassicFft<G> {
 }
 
 // classic fft using divide and conquer algorithm
-fn fft_arithmetic<G: Group>(coeffs: &mut [G], n: usize, twiddle_chunk: usize, twiddles: &[G::Scalar]) {
+fn classic_fft_arithmetic<G: Group>(coeffs: &mut [G], n: usize, twiddle_chunk: usize, twiddles: &[G::Scalar]) {
     if n == 2 {
         let t = coeffs[1];
         coeffs[1] = coeffs[0];
@@ -90,8 +90,8 @@ fn fft_arithmetic<G: Group>(coeffs: &mut [G], n: usize, twiddle_chunk: usize, tw
     } else {
         let (left, right) = coeffs.split_at_mut(n / 2);
         join(
-            || fft_arithmetic(left, n / 2, twiddle_chunk * 2, twiddles),
-            || fft_arithmetic(right, n / 2, twiddle_chunk * 2, twiddles),
+            || classic_fft_arithmetic(left, n / 2, twiddle_chunk * 2, twiddles),
+            || classic_fft_arithmetic(right, n / 2, twiddle_chunk * 2, twiddles),
         );
         butterfly_arithmetic(left, right, twiddle_chunk, twiddles)
     }
