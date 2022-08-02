@@ -1,4 +1,4 @@
-# Fft Nutshell
+# FFT Nutshell
 
 ## Abstract
 This documentation explains [`ECFFT`](https://arxiv.org/pdf/2107.08473.pdf). To understand ECFFT, it's necessary to decompose the normal FFT components so starting with FFT and explaining about ECFFT after that.

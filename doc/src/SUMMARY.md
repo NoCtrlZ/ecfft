@@ -1,3 +1,3 @@
 # ECFFT
 
-- [Fft Nutshell](./1_nutshell.md)
+- [FFT Nutshell](./1_nutshell.md)

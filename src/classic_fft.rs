@@ -1,10 +1,11 @@
 mod utils;
 
+use utils::{butterfly_arithmetic, swap_bit_reverse};
+
 use ff::Field;
 use group::ff::PrimeField;
 use pasta_curves::arithmetic::*;
 use rayon::{join, prelude::*};
-use utils::{butterfly_arithmetic, swap_bit_reverse};
 
 // classic fft structure
 #[derive(Clone, Debug)]
@@ -81,7 +82,12 @@ impl<G: Group> ClassicFft<G> {
 }
 
 // classic fft using divide and conquer algorithm
-fn classic_fft_arithmetic<G: Group>(coeffs: &mut [G], n: usize, twiddle_chunk: usize, twiddles: &[G::Scalar]) {
+fn classic_fft_arithmetic<G: Group>(
+    coeffs: &mut [G],
+    n: usize,
+    twiddle_chunk: usize,
+    twiddles: &[G::Scalar],
+) {
     if n == 2 {
         let t = coeffs[1];
         coeffs[1] = coeffs[0];
