@@ -1,4 +1,5 @@
 # ECFFT
+[![CI Check](https://github.com/ashWhiteHat/ecfft/actions/workflows/test.yml/badge.svg)](https://github.com/ashWhiteHat/ecfft/actions/workflows/test.yml)  
 [`ECFFT`](https://arxiv.org/pdf/2107.08473.pdf) implementation and benchmark optimized by [`rayon`](https://github.com/rayon-rs/rayon).
 
 ## Abstract

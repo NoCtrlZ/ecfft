@@ -3,9 +3,9 @@ mod common;
 mod ecfft;
 mod naive;
 
+pub use crate::ecfft::ECFft;
 pub use classic_fft::ClassicFft;
 pub use common::point_multiply;
-pub use ecfft::ECFft;
 pub use naive::{evaluate, naive_multiply};
 
 #[cfg(test)]
