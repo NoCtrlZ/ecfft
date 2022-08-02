@@ -1,3 +1,4 @@
+mod curve;
 mod params;
 
 use params::EcFftParams;
