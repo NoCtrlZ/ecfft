@@ -380,6 +380,72 @@ macro_rules! curve_affine_coordinate_method {
     };
 }
 
+macro_rules! curve_constant_params {
+    ($curve:ident, $curve_affine:ident, $field:ident, $generator_x:ident, $generator_y:ident, $subgroup_generator_x:ident, $subgroup_generator_y:ident, $representative_x:ident, $representative_y:ident) => {
+        impl $curve {
+            fn generator() -> Self {
+                Self {
+                    x: $generator_x,
+                    y: $generator_y,
+                    z: Fp::from_raw([1, 0, 0, 0]),
+                }
+            }
+
+            fn subgroup_generator() -> Self {
+                Self {
+                    x: $subgroup_generator_x,
+                    y: $subgroup_generator_y,
+                    z: Fp::from_raw([1, 0, 0, 0]),
+                }
+            }
+
+            fn representative() -> Self {
+                Self {
+                    x: $representative_x,
+                    y: $representative_y,
+                    z: Fp::from_raw([1, 0, 0, 0]),
+                }
+            }
+        }
+
+        impl $curve_affine {
+            fn generator() -> Self {
+                $curve_affine {
+                    x: $generator_x,
+                    y: $generator_y,
+                }
+            }
+
+            fn subgroup_generator() -> Self {
+                $curve_affine {
+                    x: $subgroup_generator_x,
+                    y: $subgroup_generator_y,
+                }
+            }
+
+            fn representative() -> Self {
+                $curve_affine {
+                    x: $representative_x,
+                    y: $representative_y,
+                }
+            }
+
+            fn to_curve(&self) -> $curve {
+                $curve {
+                    x: self.x,
+                    y: self.y,
+                    z: $field::conditional_select(
+                        &$field::one(),
+                        &$field::zero(),
+                        self.is_identity(),
+                    ),
+                }
+            }
+        }
+    };
+}
+
 pub(crate) use {
-    curve_affine_coordinate_method, curve_projective_arithmetic, curve_projective_coordinate_method,
+    curve_affine_coordinate_method, curve_constant_params, curve_projective_arithmetic,
+    curve_projective_coordinate_method,
 };

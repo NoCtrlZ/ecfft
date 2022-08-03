@@ -10,11 +10,54 @@ use core::fmt::{self, Debug};
 use core::ops::{Add, Mul};
 
 use super::behave::{
-    curve_affine_coordinate_method, curve_projective_arithmetic, curve_projective_coordinate_method,
+    curve_affine_coordinate_method, curve_constant_params, curve_projective_arithmetic,
+    curve_projective_coordinate_method,
 };
 use ff::{Field, PrimeField};
 use pasta_curves::Fp;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
+
+const GENERATOR_X: Fp = Fp::from_raw([
+    0x4da26202dffa62a8,
+    0x8406aac002f8b832,
+    0xf60aecbfc30e57f7,
+    0x1d62ba1b544c4f84,
+]);
+
+const GENERATOR_Y: Fp = Fp::from_raw([
+    0x52f8ada18c2b96dc,
+    0xedd674d51f009506,
+    0x17abe167e59849de,
+    0x620e16d2e51fdfa,
+]);
+
+const SUBGROUP_GENERATOR_X: Fp = Fp::from_raw([
+    0xb8232a4ceb8b38a0,
+    0x7f33b4d8afd508ca,
+    0x4fa8c6d72ce6acb4,
+    0x169edf7b95680fac,
+]);
+
+const SUBGROUP_GENERATOR_Y: Fp = Fp::from_raw([
+    0xe42dd096663043c1,
+    0xfe9dcd6de011ea03,
+    0x27603573acd1fcbd,
+    0x51a48a414e8239d,
+]);
+
+const REPRESENTATIVE_X: Fp = Fp::from_raw([
+    0x5b1575e3d64364c7,
+    0x8f4b66263e159043,
+    0xb8787be360f5270b,
+    0x1ac2d405d53f2333,
+]);
+
+const REPRESENTATIVE_Y: Fp = Fp::from_raw([
+    0x641bc6c587cf1cb9,
+    0x6082deb9cca88fef,
+    0x802db2846bbce985,
+    0x3488bbb09671330,
+]);
 
 curve_affine_coordinate_method!(
     EpAffine,
@@ -27,67 +70,6 @@ curve_affine_coordinate_method!(
         0x34524f71a21a7096,
     ]
 );
-
-impl EpAffine {
-    fn generator() -> Self {
-        EpAffine {
-            x: Fp::from_raw([
-                0x4da26202dffa62a8,
-                0x8406aac002f8b832,
-                0xf60aecbfc30e57f7,
-                0x1d62ba1b544c4f84,
-            ]),
-            y: Fp::from_raw([
-                0x52f8ada18c2b96dc,
-                0xedd674d51f009506,
-                0x17abe167e59849de,
-                0x620e16d2e51fdfa,
-            ]),
-        }
-    }
-
-    fn subgroup_generator() -> Self {
-        Self {
-            x: Fp::from_raw([
-                0xb8232a4ceb8b38a0,
-                0x7f33b4d8afd508ca,
-                0x4fa8c6d72ce6acb4,
-                0x169edf7b95680fac,
-            ]),
-            y: Fp::from_raw([
-                0xe42dd096663043c1,
-                0xfe9dcd6de011ea03,
-                0x27603573acd1fcbd,
-                0x51a48a414e8239d,
-            ]),
-        }
-    }
-
-    fn representative() -> Self {
-        Self {
-            x: Fp::from_raw([
-                0x5b1575e3d64364c7,
-                0x8f4b66263e159043,
-                0xb8787be360f5270b,
-                0x1ac2d405d53f2333,
-            ]),
-            y: Fp::from_raw([
-                0x641bc6c587cf1cb9,
-                0x6082deb9cca88fef,
-                0x802db2846bbce985,
-                0x3488bbb09671330,
-            ]),
-        }
-    }
-
-    fn to_curve(&self) -> Ep {
-        Ep {
-            x: self.x,
-            y: self.y,
-            z: Fp::conditional_select(&Fp::one(), &Fp::zero(), self.is_identity()),
-        }
-    }
-}
 
 curve_projective_coordinate_method!(
     Ep,
@@ -102,69 +84,21 @@ curve_projective_coordinate_method!(
 );
 curve_projective_arithmetic!(Ep, EpAffine, Fp);
 
-impl Ep {
-    fn generator() -> Self {
-        Self {
-            x: Fp::from_raw([
-                0x4da26202dffa62a8,
-                0x8406aac002f8b832,
-                0xf60aecbfc30e57f7,
-                0x1d62ba1b544c4f84,
-            ]),
-            y: Fp::from_raw([
-                0x52f8ada18c2b96dc,
-                0xedd674d51f009506,
-                0x17abe167e59849de,
-                0x620e16d2e51fdfa,
-            ]),
-            z: Fp::from_raw([1, 0, 0, 0]),
-        }
-    }
-
-    fn subgroup_generator() -> Self {
-        Self {
-            x: Fp::from_raw([
-                0xb8232a4ceb8b38a0,
-                0x7f33b4d8afd508ca,
-                0x4fa8c6d72ce6acb4,
-                0x169edf7b95680fac,
-            ]),
-            y: Fp::from_raw([
-                0xe42dd096663043c1,
-                0xfe9dcd6de011ea03,
-                0x27603573acd1fcbd,
-                0x51a48a414e8239d,
-            ]),
-            z: Fp::from_raw([1, 0, 0, 0]),
-        }
-    }
-
-    fn representative() -> Self {
-        Self {
-            x: Fp::from_raw([
-                0x5b1575e3d64364c7,
-                0x8f4b66263e159043,
-                0xb8787be360f5270b,
-                0x1ac2d405d53f2333,
-            ]),
-            y: Fp::from_raw([
-                0x641bc6c587cf1cb9,
-                0x6082deb9cca88fef,
-                0x802db2846bbce985,
-                0x3488bbb09671330,
-            ]),
-            z: Fp::from_raw([1, 0, 0, 0]),
-        }
-    }
-}
+curve_constant_params!(
+    Ep,
+    EpAffine,
+    Fp,
+    GENERATOR_X,
+    GENERATOR_Y,
+    SUBGROUP_GENERATOR_X,
+    SUBGROUP_GENERATOR_Y,
+    REPRESENTATIVE_X,
+    REPRESENTATIVE_Y
+);
 
 #[cfg(test)]
 mod tests {
-    use std::{borrow::Borrow, process::id};
-
     use super::{Ep, EpAffine, Fp};
-    use ff::PrimeField;
-    use subtle::Choice;
 
     #[test]
     fn test_const_points_is_on_curve() {
