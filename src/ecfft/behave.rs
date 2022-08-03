@@ -93,34 +93,33 @@ macro_rules! curve_projective_arithmetic {
                 $curve_affine { x, y }
             }
 
-            fn double(&self) -> $curve {
-                let a = self.z.square() * Self::curve_constant_a();
-                let b = self.x.square();
-                let b = b + b + b;
-                let w = a + b;
-                let s = self.y * self.z;
-                let b = self.x * self.y * s;
-                let c = w.square();
-                let d = b.double().double();
-                let h = c - d.double();
-                let e = h * s;
-                let x3 = e + e;
-                let f = w * (d - h);
-                let g = self.y.square() * s.square();
-                let g = g.double().double().double();
-                let y3 = f - g;
-                let h = s * s * s;
-                let z3 = h.double().double().double();
+            fn double(&self) -> Self {
+                let xx = self.x.square();
+                let yy = self.y.square();
+                let yyyy = yy.square();
+                let zz = self.z.square();
+                let a = self.x + yy;
+                let b = a.square() - xx - yyyy;
+                let s = b + b;
+                let c = xx + xx + xx;
+                let d = zz.square() * Self::curve_constant_a();
+                let m = c + d;
+                let e = s + s;
+                let t = m.square() - e;
+                let x3 = t;
+                let f = s - t;
+                let l = yyyy.double().double().double();
+                let y3 = m * f - l;
+                let n = self.y + self.z;
+                let z3 = n.square() - yy - zz;
 
-                $curve::conditional_select(
-                    &$curve {
-                        x: x3,
-                        y: y3,
-                        z: z3,
-                    },
-                    &$curve::identity(),
-                    self.is_identity(),
-                )
+                let tmp = $curve {
+                    x: x3,
+                    y: y3,
+                    z: z3,
+                };
+
+                $curve::conditional_select(&tmp, &$curve::identity(), self.is_identity())
             }
         }
 
