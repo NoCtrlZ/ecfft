@@ -5,6 +5,11 @@
 //! a = 1
 //! b = 23665697887148517506426806798051226694671519983424102823343279587811911881026
 //! n = 2^12 | #E(Fp)
+//!
+//! G ⊂ E(Fp)
+//! #G = n
+//!
+//! These params allow us to evaluate `n` degree polynomials
 
 use core::fmt::{self, Debug};
 use core::ops::{Add, Mul};
@@ -16,6 +21,15 @@ use super::behave::{
 use ff::{Field, PrimeField};
 use pasta_curves::Fp;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
+
+const CURVE_A: Fp = Fp::one();
+
+const CURVE_B: Fp = Fp::from_raw([
+    0xedc87ab655e55142,
+    0xd76d8e4277cb9048,
+    0xc6ad51a6a7fe7a43,
+    0x34524f71a21a7096,
+]);
 
 const GENERATOR_X: Fp = Fp::from_raw([
     0x4da26202dffa62a8,
@@ -59,29 +73,9 @@ const REPRESENTATIVE_Y: Fp = Fp::from_raw([
     0x3488bbb09671330,
 ]);
 
-curve_affine_coordinate_method!(
-    EpAffine,
-    Fp,
-    [1, 0, 0, 0],
-    [
-        0xedc87ab655e55142,
-        0xd76d8e4277cb9048,
-        0xc6ad51a6a7fe7a43,
-        0x34524f71a21a7096,
-    ]
-);
+curve_affine_coordinate_method!(EpAffine, Fp, CURVE_A, CURVE_B);
+curve_projective_coordinate_method!(Ep, Fp, CURVE_A, CURVE_B);
 
-curve_projective_coordinate_method!(
-    Ep,
-    Fp,
-    [1, 0, 0, 0],
-    [
-        0xedc87ab655e55142,
-        0xd76d8e4277cb9048,
-        0xc6ad51a6a7fe7a43,
-        0x34524f71a21a7096,
-    ]
-);
 curve_projective_arithmetic!(Ep, EpAffine, Fp);
 
 curve_constant_params!(

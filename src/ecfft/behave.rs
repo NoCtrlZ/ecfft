@@ -1,5 +1,5 @@
 macro_rules! curve_projective_coordinate_method {
-    ($curve:ident, $field:ident, $a:expr, $b:expr) => {
+    ($curve:ident, $field:ident, $a:ident, $b:ident) => {
         #[derive(Copy, Clone, Debug)]
         pub(crate) struct $curve {
             x: $field,
@@ -9,11 +9,11 @@ macro_rules! curve_projective_coordinate_method {
 
         impl $curve {
             const fn curve_constant_a() -> $field {
-                $field::from_raw($a)
+                $a
             }
 
             const fn curve_constant_b() -> $field {
-                $field::from_raw($b)
+                $b
             }
 
             fn is_identity(&self) -> Choice {
@@ -48,8 +48,6 @@ macro_rules! curve_projective_coordinate_method {
 
         impl ConstantTimeEq for $curve {
             fn ct_eq(&self, other: &Self) -> Choice {
-                // Is (xz^2, yz^3, z) equal to (x'z'^2, yz'^3, z') when converted to affine?
-
                 let z = other.z.square();
                 let x1 = self.x * z;
                 let z = z * other.z;
@@ -62,9 +60,8 @@ macro_rules! curve_projective_coordinate_method {
                 let self_is_zero = self.is_identity();
                 let other_is_zero = other.is_identity();
 
-                (self_is_zero & other_is_zero) // Both point at infinity
-                            | ((!self_is_zero) & (!other_is_zero) & x1.ct_eq(&x2) & y1.ct_eq(&y2))
-                // Neither point at infinity, coordinates are the same
+                (self_is_zero & other_is_zero)
+                    | ((!self_is_zero) & (!other_is_zero) & x1.ct_eq(&x2) & y1.ct_eq(&y2))
             }
         }
 
@@ -125,7 +122,7 @@ macro_rules! curve_projective_arithmetic {
             }
         }
 
-        impl<'a, 'b> Add<&'a Ep> for &'b $curve {
+        impl<'a, 'b> Add<&'a $curve> for &'b $curve {
             type Output = $curve;
 
             fn add(self, rhs: &'a $curve) -> $curve {
@@ -341,7 +338,7 @@ macro_rules! curve_projective_arithmetic {
 }
 
 macro_rules! curve_affine_coordinate_method {
-    ($curve_affine:ident, $field:ident, $a:expr, $b:expr) => {
+    ($curve_affine:ident, $field:ident, $a:ident, $b:ident) => {
         #[derive(Clone)]
         pub(crate) struct $curve_affine {
             x: $field,
@@ -350,11 +347,11 @@ macro_rules! curve_affine_coordinate_method {
 
         impl $curve_affine {
             const fn curve_constant_a() -> $field {
-                $field::from_raw($a)
+                $a
             }
 
             const fn curve_constant_b() -> $field {
-                $field::from_raw($b)
+                $b
             }
 
             fn is_on_curve(&self) -> Choice {
@@ -387,7 +384,7 @@ macro_rules! curve_constant_params {
                 Self {
                     x: $generator_x,
                     y: $generator_y,
-                    z: Fp::from_raw([1, 0, 0, 0]),
+                    z: Fp::one(),
                 }
             }
 
@@ -395,7 +392,7 @@ macro_rules! curve_constant_params {
                 Self {
                     x: $subgroup_generator_x,
                     y: $subgroup_generator_y,
-                    z: Fp::from_raw([1, 0, 0, 0]),
+                    z: Fp::one(),
                 }
             }
 
@@ -403,7 +400,7 @@ macro_rules! curve_constant_params {
                 Self {
                     x: $representative_x,
                     y: $representative_y,
-                    z: Fp::from_raw([1, 0, 0, 0]),
+                    z: Fp::one(),
                 }
             }
         }
