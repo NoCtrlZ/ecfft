@@ -281,5 +281,46 @@ macro_rules! curve_projective_arithmetic {
     };
 }
 
-pub(crate) use curve_projective_arithmetic;
-pub(crate) use curve_projective_coordinate_method;
+macro_rules! curve_affine_coordinate_method {
+    ($curve_affine:ident, $field:ident, $a:expr, $b:expr) => {
+        #[derive(Clone)]
+        pub(crate) struct $curve_affine {
+            x: $field,
+            y: $field,
+        }
+
+        impl $curve_affine {
+            const fn curve_constant_a() -> $field {
+                $field::from_raw($a)
+            }
+
+            const fn curve_constant_b() -> $field {
+                $field::from_raw($b)
+            }
+
+            fn is_on_curve(&self) -> Choice {
+                (self.y.square() - (self.x.square() + $curve_affine::curve_constant_a()) * self.x)
+                    .ct_eq(&$curve_affine::curve_constant_b())
+                    | self.is_identity()
+            }
+
+            fn is_identity(&self) -> Choice {
+                self.x.is_zero() & self.y.is_zero()
+            }
+        }
+
+        impl fmt::Debug for $curve_affine {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+                if self.is_identity().into() {
+                    write!(f, "Infinity")
+                } else {
+                    write!(f, "({:?}, {:?})", self.x, self.y)
+                }
+            }
+        }
+    };
+}
+
+pub(crate) use {
+    curve_affine_coordinate_method, curve_projective_arithmetic, curve_projective_coordinate_method,
+};

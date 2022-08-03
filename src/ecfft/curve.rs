@@ -9,31 +9,26 @@
 use core::fmt::{self, Debug};
 use core::ops::{Add, Mul};
 
-use super::behave::{curve_projective_arithmetic, curve_projective_coordinate_method};
+use super::behave::{
+    curve_affine_coordinate_method, curve_projective_arithmetic, curve_projective_coordinate_method,
+};
 use ff::{Field, PrimeField};
 use pasta_curves::Fp;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
-#[derive(Clone)]
-pub(crate) struct EpAffine {
-    x: Fp,
-    y: Fp,
-}
+curve_affine_coordinate_method!(
+    EpAffine,
+    Fp,
+    [1, 0, 0, 0],
+    [
+        0xedc87ab655e55142,
+        0xd76d8e4277cb9048,
+        0xc6ad51a6a7fe7a43,
+        0x34524f71a21a7096,
+    ]
+);
 
 impl EpAffine {
-    const fn curve_constant_a() -> Fp {
-        Fp::from_raw([1, 0, 0, 0])
-    }
-
-    const fn curve_constant_b() -> Fp {
-        Fp::from_raw([
-            0xedc87ab655e55142,
-            0xd76d8e4277cb9048,
-            0xc6ad51a6a7fe7a43,
-            0x34524f71a21a7096,
-        ])
-    }
-
     fn generator() -> Self {
         EpAffine {
             x: Fp::from_raw([
@@ -85,31 +80,11 @@ impl EpAffine {
         }
     }
 
-    fn is_on_curve(&self) -> Choice {
-        (self.y.square() - (self.x.square() + Self::curve_constant_a()) * self.x)
-            .ct_eq(&Self::curve_constant_b())
-            | self.is_identity()
-    }
-
-    fn is_identity(&self) -> Choice {
-        self.x.is_zero() & self.y.is_zero()
-    }
-
     fn to_curve(&self) -> Ep {
         Ep {
             x: self.x,
             y: self.y,
             z: Fp::conditional_select(&Fp::one(), &Fp::zero(), self.is_identity()),
-        }
-    }
-}
-
-impl fmt::Debug for EpAffine {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        if self.is_identity().into() {
-            write!(f, "Infinity")
-        } else {
-            write!(f, "({:?}, {:?})", self.x, self.y)
         }
     }
 }
