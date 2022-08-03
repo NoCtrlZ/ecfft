@@ -52,6 +52,47 @@ macro_rules! curve_projective_coordinate_method {
 
 macro_rules! curve_projective_arithmetic {
     ($curve:ident, $curve_affine:ident, $field:ident) => {
+        impl $curve {
+            fn to_affine(&self) -> $curve_affine {
+                let zinv = self.z.invert().unwrap_or($field::zero());
+                let zinv2 = zinv.square();
+                let x = self.x * zinv2;
+                let zinv3 = zinv2 * zinv;
+                let y = self.y * zinv3;
+
+                $curve_affine { x, y }
+            }
+
+            fn double(&self) -> $curve {
+                let a = self.x.square();
+                let b = self.y.square();
+                let c = b.square();
+                let d = self.x + b;
+                let d = d.square();
+                let d = d - a - c;
+                let d = d + d;
+                let e = a + a + a + Self::curve_constant_a();
+                let f = e.square();
+                let z3 = self.z * self.y;
+                let z3 = z3 + z3;
+                let x3 = f - (d + d);
+                let c = c + c;
+                let c = c + c;
+                let c = c + c;
+                let y3 = e * (d - x3) - c;
+
+                $curve::conditional_select(
+                    &$curve {
+                        x: x3,
+                        y: y3,
+                        z: z3,
+                    },
+                    &$curve::identity(),
+                    self.is_identity(),
+                )
+            }
+        }
+
         impl<'a, 'b> Add<&'a Ep> for &'b $curve {
             type Output = $curve;
 

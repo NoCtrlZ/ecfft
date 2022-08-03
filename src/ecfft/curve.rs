@@ -181,45 +181,6 @@ impl Ep {
             z: Fp::from_raw([1, 0, 0, 0]),
         }
     }
-
-    fn to_affine(&self) -> EpAffine {
-        let zinv = self.z.invert().unwrap_or(Fp::zero());
-        let zinv2 = zinv.square();
-        let x = self.x * zinv2;
-        let zinv3 = zinv2 * zinv;
-        let y = self.y * zinv3;
-
-        EpAffine { x, y }
-    }
-
-    fn double(&self) -> Self {
-        let a = self.x.square();
-        let b = self.y.square();
-        let c = b.square();
-        let d = self.x + b;
-        let d = d.square();
-        let d = d - a - c;
-        let d = d + d;
-        let e = a + a + a;
-        let f = e.square();
-        let z3 = self.z * self.y;
-        let z3 = z3 + z3;
-        let x3 = f - (d + d);
-        let c = c + c;
-        let c = c + c;
-        let c = c + c;
-        let y3 = e * (d - x3) - c;
-
-        Ep::conditional_select(
-            &Ep {
-                x: x3,
-                y: y3,
-                z: z3,
-            },
-            &Ep::identity(),
-            self.is_identity(),
-        )
-    }
 }
 
 #[cfg(test)]
@@ -252,7 +213,15 @@ mod tests {
         let projective_representative = Ep::representative();
         let projective_subgroup_generator = Ep::subgroup_generator();
 
-        let sum = projective_subgroup_generator + projective_representative;
-        assert_eq!(sum.is_on_curve().unwrap_u8(), 1);
+        let add = projective_subgroup_generator + projective_representative;
+        assert_eq!(add.is_on_curve().unwrap_u8(), 1);
+    }
+
+    #[test]
+    fn test_double_point() {
+        let projective_representative = Ep::representative();
+
+        let double = projective_representative.double();
+        assert_eq!(double.is_on_curve().unwrap_u8(), 1);
     }
 }
