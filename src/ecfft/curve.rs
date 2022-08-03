@@ -160,7 +160,11 @@ impl Ep {
 
 #[cfg(test)]
 mod tests {
-    use super::{Ep, EpAffine};
+    use std::{borrow::Borrow, process::id};
+
+    use super::{Ep, EpAffine, Fp};
+    use ff::PrimeField;
+    use subtle::Choice;
 
     #[test]
     fn test_const_points_is_on_curve() {
@@ -197,6 +201,15 @@ mod tests {
         let projective_representative = Ep::representative();
 
         let double = projective_representative.double();
+        assert_eq!(double.is_on_curve().unwrap_u8(), 1);
+    }
+
+    #[test]
+    fn test_subgroup_order() {
+        let projective_subgroup_generator = Ep::subgroup_generator();
+        let double = projective_subgroup_generator.double();
+        let double = double.double();
+
         assert_eq!(double.is_on_curve().unwrap_u8(), 1);
     }
 }

@@ -38,6 +38,36 @@ macro_rules! curve_projective_coordinate_method {
             }
         }
 
+        impl PartialEq for $curve {
+            fn eq(&self, other: &Self) -> bool {
+                self.ct_eq(other).into()
+            }
+        }
+
+        impl Eq for $curve {}
+
+        impl ConstantTimeEq for $curve {
+            fn ct_eq(&self, other: &Self) -> Choice {
+                // Is (xz^2, yz^3, z) equal to (x'z'^2, yz'^3, z') when converted to affine?
+
+                let z = other.z.square();
+                let x1 = self.x * z;
+                let z = z * other.z;
+                let y1 = self.y * z;
+                let z = self.z.square();
+                let x2 = other.x * z;
+                let z = z * self.z;
+                let y2 = other.y * z;
+
+                let self_is_zero = self.is_identity();
+                let other_is_zero = other.is_identity();
+
+                (self_is_zero & other_is_zero) // Both point at infinity
+                            | ((!self_is_zero) & (!other_is_zero) & x1.ct_eq(&x2) & y1.ct_eq(&y2))
+                // Neither point at infinity, coordinates are the same
+            }
+        }
+
         impl ConditionallySelectable for $curve {
             fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
                 $curve {
@@ -64,22 +94,23 @@ macro_rules! curve_projective_arithmetic {
             }
 
             fn double(&self) -> $curve {
-                let a = self.x.square();
-                let b = self.y.square();
-                let c = b.square();
-                let d = self.x + b;
-                let d = d.square();
-                let d = d - a - c;
-                let d = d + d;
-                let e = a + a + a + Self::curve_constant_a();
-                let f = e.square();
-                let z3 = self.z * self.y;
-                let z3 = z3 + z3;
-                let x3 = f - (d + d);
-                let c = c + c;
-                let c = c + c;
-                let c = c + c;
-                let y3 = e * (d - x3) - c;
+                let a = self.z.square() * Self::curve_constant_a();
+                let b = self.x.square();
+                let b = b + b + b;
+                let w = a + b;
+                let s = self.y * self.z;
+                let b = self.x * self.y * s;
+                let c = w.square();
+                let d = b.double().double();
+                let h = c - d.double();
+                let e = h * s;
+                let x3 = e + e;
+                let f = w * (d - h);
+                let g = self.y.square() * s.square();
+                let g = g.double().double().double();
+                let y3 = f - g;
+                let h = s * s * s;
+                let z3 = h.double().double().double();
 
                 $curve::conditional_select(
                     &$curve {
@@ -276,6 +307,33 @@ macro_rules! curve_projective_arithmetic {
                 }
 
                 acc
+            }
+        }
+
+        impl<'b> Mul<&'b $field> for $curve {
+            type Output = $curve;
+
+            #[inline]
+            fn mul(self, rhs: &'b $field) -> $curve {
+                &self * rhs
+            }
+        }
+
+        impl<'a> Mul<$field> for &'a $curve {
+            type Output = $curve;
+
+            #[inline]
+            fn mul(self, rhs: $field) -> $curve {
+                self * &rhs
+            }
+        }
+
+        impl Mul<$field> for $curve {
+            type Output = $curve;
+
+            #[inline]
+            fn mul(self, rhs: $field) -> $curve {
+                &self * &rhs
             }
         }
     };
