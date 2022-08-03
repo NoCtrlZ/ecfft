@@ -94,6 +94,8 @@ macro_rules! curve_projective_arithmetic {
             }
 
             fn double(&self) -> Self {
+                // https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2007-bl
+
                 let xx = self.x.square();
                 let yy = self.y.square();
                 let yyyy = yy.square();

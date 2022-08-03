@@ -49,16 +49,16 @@ impl EpAffine {
     fn subgroup_generator() -> Self {
         Self {
             x: Fp::from_raw([
-                0x4da26202dffa62a8,
-                0x8406aac002f8b832,
-                0xf60aecbfc30e57f7,
-                0x1d62ba1b544c4f84,
+                0xb8232a4ceb8b38a0,
+                0x7f33b4d8afd508ca,
+                0x4fa8c6d72ce6acb4,
+                0x169edf7b95680fac,
             ]),
             y: Fp::from_raw([
-                0x52f8ada18c2b96dc,
-                0xedd674d51f009506,
-                0x17abe167e59849de,
-                0x620e16d2e51fdfa,
+                0xe42dd096663043c1,
+                0xfe9dcd6de011ea03,
+                0x27603573acd1fcbd,
+                0x51a48a414e8239d,
             ]),
         }
     }
@@ -124,16 +124,16 @@ impl Ep {
     fn subgroup_generator() -> Self {
         Self {
             x: Fp::from_raw([
-                0x4da26202dffa62a8,
-                0x8406aac002f8b832,
-                0xf60aecbfc30e57f7,
-                0x1d62ba1b544c4f84,
+                0xb8232a4ceb8b38a0,
+                0x7f33b4d8afd508ca,
+                0x4fa8c6d72ce6acb4,
+                0x169edf7b95680fac,
             ]),
             y: Fp::from_raw([
-                0x52f8ada18c2b96dc,
-                0xedd674d51f009506,
-                0x17abe167e59849de,
-                0x620e16d2e51fdfa,
+                0xe42dd096663043c1,
+                0xfe9dcd6de011ea03,
+                0x27603573acd1fcbd,
+                0x51a48a414e8239d,
             ]),
             z: Fp::from_raw([1, 0, 0, 0]),
         }
@@ -207,9 +207,9 @@ mod tests {
     #[test]
     fn test_subgroup_order() {
         let projective_subgroup_generator = Ep::subgroup_generator();
-        let double = projective_subgroup_generator.double();
-        let double = double.double();
+        let order = 1 << 12;
+        let identity = projective_subgroup_generator * Fp::from_raw([order, 0, 0, 0]);
 
-        assert_eq!(double.is_on_curve().unwrap_u8(), 1);
+        assert_eq!(identity.is_identity().unwrap_u8(), 1);
     }
 }
