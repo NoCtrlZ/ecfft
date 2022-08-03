@@ -1,3 +1,4 @@
+mod behave;
 mod curve;
 mod params;
 

@@ -7,10 +7,12 @@
 //! n = 2^12 | #E(Fp)
 
 use core::fmt::{self, Debug};
+use core::ops::{Add, Mul};
 
-use ff::Field;
+use super::behave::{curve_projective_arithmetic, curve_projective_coordinate_method};
+use ff::{Field, PrimeField};
 use pasta_curves::Fp;
-use subtle::{Choice, ConstantTimeEq};
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 #[derive(Clone)]
 pub(crate) struct EpAffine {
@@ -84,7 +86,6 @@ impl EpAffine {
     }
 
     fn is_on_curve(&self) -> Choice {
-        // y^2 - x^3 - ax ?= b
         (self.y.square() - (self.x.square() + Self::curve_constant_a()) * self.x)
             .ct_eq(&Self::curve_constant_b())
             | self.is_identity()
@@ -92,6 +93,14 @@ impl EpAffine {
 
     fn is_identity(&self) -> Choice {
         self.x.is_zero() & self.y.is_zero()
+    }
+
+    fn to_curve(&self) -> Ep {
+        Ep {
+            x: self.x,
+            y: self.y,
+            z: Fp::conditional_select(&Fp::one(), &Fp::zero(), self.is_identity()),
+        }
     }
 }
 
@@ -105,27 +114,20 @@ impl fmt::Debug for EpAffine {
     }
 }
 
-#[derive(Clone, Debug)]
-pub(crate) struct Ep {
-    x: Fp,
-    y: Fp,
-    z: Fp,
-}
+curve_projective_coordinate_method!(
+    Ep,
+    Fp,
+    [1, 0, 0, 0],
+    [
+        0xedc87ab655e55142,
+        0xd76d8e4277cb9048,
+        0xc6ad51a6a7fe7a43,
+        0x34524f71a21a7096,
+    ]
+);
+curve_projective_arithmetic!(Ep, EpAffine, Fp);
 
 impl Ep {
-    const fn curve_constant_a() -> Fp {
-        Fp::from_raw([1, 0, 0, 0])
-    }
-
-    const fn curve_constant_b() -> Fp {
-        Fp::from_raw([
-            0xedc87ab655e55142,
-            0xd76d8e4277cb9048,
-            0xc6ad51a6a7fe7a43,
-            0x34524f71a21a7096,
-        ])
-    }
-
     fn generator() -> Self {
         Self {
             x: Fp::from_raw([
@@ -180,28 +182,43 @@ impl Ep {
         }
     }
 
-    fn identity() -> Self {
-        Self {
-            x: Fp::zero(),
-            y: Fp::zero(),
-            z: Fp::zero(),
-        }
+    fn to_affine(&self) -> EpAffine {
+        let zinv = self.z.invert().unwrap_or(Fp::zero());
+        let zinv2 = zinv.square();
+        let x = self.x * zinv2;
+        let zinv3 = zinv2 * zinv;
+        let y = self.y * zinv3;
+
+        EpAffine { x, y }
     }
 
-    fn is_identity(&self) -> Choice {
-        self.z.is_zero()
-    }
+    fn double(&self) -> Self {
+        let a = self.x.square();
+        let b = self.y.square();
+        let c = b.square();
+        let d = self.x + b;
+        let d = d.square();
+        let d = d - a - c;
+        let d = d + d;
+        let e = a + a + a;
+        let f = e.square();
+        let z3 = self.z * self.y;
+        let z3 = z3 + z3;
+        let x3 = f - (d + d);
+        let c = c + c;
+        let c = c + c;
+        let c = c + c;
+        let y3 = e * (d - x3) - c;
 
-    fn is_on_curve(&self) -> Choice {
-        // Y^2 = X^3 + AX(Z^4) + b(Z^6)
-        // Y^2 - (X^2 + A(Z^4))X = b(Z^6)
-
-        let z2 = self.z.square();
-        let z4 = z2.square();
-        let z6 = z4 * z2;
-        (self.y.square() - (self.x.square() + Ep::curve_constant_a() * z4) * self.x)
-            .ct_eq(&(z6 * Ep::curve_constant_b()))
-            | self.z.is_zero()
+        Ep::conditional_select(
+            &Ep {
+                x: x3,
+                y: y3,
+                z: z3,
+            },
+            &Ep::identity(),
+            self.is_identity(),
+        )
     }
 }
 
@@ -228,5 +245,14 @@ mod tests {
 
         assert_eq!(affine_representative.is_on_curve().unwrap_u8(), 1);
         assert_eq!(projective_representative.is_on_curve().unwrap_u8(), 1);
+    }
+
+    #[test]
+    fn test_add_points() {
+        let projective_representative = Ep::representative();
+        let projective_subgroup_generator = Ep::subgroup_generator();
+
+        let sum = projective_subgroup_generator + projective_representative;
+        assert_eq!(sum.is_on_curve().unwrap_u8(), 1);
     }
 }
