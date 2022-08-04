@@ -80,7 +80,7 @@ macro_rules! curve_projective_coordinate_method {
 macro_rules! curve_projective_arithmetic {
     ($curve:ident, $curve_affine:ident, $field:ident) => {
         impl $curve {
-            fn to_affine(&self) -> $curve_affine {
+            pub(crate) fn to_affine(&self) -> $curve_affine {
                 let zinv = self.z.invert().unwrap_or($field::zero());
                 let zinv2 = zinv.square();
                 let x = self.x * zinv2;
@@ -363,6 +363,10 @@ macro_rules! curve_affine_coordinate_method {
             fn is_identity(&self) -> Choice {
                 self.x.is_zero() & self.y.is_zero()
             }
+
+            pub(crate) fn point_projective(&self) -> $field {
+                self.x
+            }
         }
 
         impl fmt::Debug for $curve_affine {
@@ -388,7 +392,7 @@ macro_rules! curve_constant_params {
                 }
             }
 
-            fn subgroup_generator() -> Self {
+            pub(crate) fn subgroup_generator() -> Self {
                 Self {
                     x: $subgroup_generator_x,
                     y: $subgroup_generator_y,
@@ -396,7 +400,7 @@ macro_rules! curve_constant_params {
                 }
             }
 
-            fn representative() -> Self {
+            pub(crate) fn representative() -> Self {
                 Self {
                     x: $representative_x,
                     y: $representative_y,

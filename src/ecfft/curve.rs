@@ -93,6 +93,8 @@ curve_constant_params!(
 #[cfg(test)]
 mod tests {
     use super::{Ep, EpAffine, Fp};
+    use ff::Field;
+    use rand_core::OsRng;
 
     #[test]
     fn test_const_points_is_on_curve() {
@@ -139,5 +141,14 @@ mod tests {
         let identity = projective_subgroup_generator * Fp::from_raw([order, 0, 0, 0]);
 
         assert_eq!(identity.is_identity().unwrap_u8(), 1);
+    }
+
+    #[test]
+    fn test_to_affine() {
+        let projective_subgroup_generator = Ep::subgroup_generator();
+        let random_point = projective_subgroup_generator * Fp::random(OsRng);
+        let affine_point = random_point.to_affine();
+
+        assert_eq!(affine_point.is_on_curve().unwrap_u8(), 1);
     }
 }
