@@ -1,4 +1,4 @@
-use pasta_curves::Fp;
+use pairing::bn256::Fr as Fp;
 
 // order(n) polynomials points multiplication
 pub fn point_multiply(a: Vec<Fp>, b: Vec<Fp>) -> Vec<Fp> {

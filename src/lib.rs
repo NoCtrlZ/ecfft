@@ -10,8 +10,8 @@ pub use naive::{evaluate, naive_multiply};
 #[cfg(test)]
 mod tests {
     use super::{naive_multiply, point_multiply, ClassicFft};
-    use ff::Field;
-    use pasta_curves::Fp;
+    use pairing::bn256::Fr as Fp;
+    use pairing::group::ff::Field;
     use proptest::prelude::*;
     use rand_core::OsRng;
 

@@ -2,9 +2,8 @@ mod utils;
 
 use utils::{butterfly_arithmetic, swap_bit_reverse};
 
-use ff::Field;
-use group::ff::PrimeField;
-use pasta_curves::arithmetic::*;
+use pairing::arithmetic::*;
+use pairing::group::ff::{Field, PrimeField};
 use rayon::{join, prelude::*};
 
 // classic fft structure
@@ -106,8 +105,8 @@ fn classic_fft_arithmetic<G: Group>(
 #[cfg(test)]
 mod tests {
     use super::ClassicFft;
-    use ff::Field;
-    use pasta_curves::Fp;
+    use pairing::bn256::Fr as Fp;
+    use pairing::group::ff::Field;
     use proptest::prelude::*;
     use rand_core::OsRng;
 

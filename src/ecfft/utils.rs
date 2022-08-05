@@ -1,6 +1,5 @@
 use super::curve::Ep;
-use ff::Field;
-use pasta_curves::Fp;
+use pairing::bn256::Fr as Fp;
 
 // constant params for ecfft
 #[derive(Clone, Debug)]

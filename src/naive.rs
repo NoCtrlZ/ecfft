@@ -1,5 +1,5 @@
-use ff::Field;
-use pasta_curves::Fp;
+use pairing::bn256::Fr as Fp;
+use pairing::group::ff::Field;
 
 // evaluate coeffs form polynomial with given at
 pub fn evaluate<F: Field>(coeffs: &[F], at: F) -> F {

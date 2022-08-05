@@ -18,8 +18,8 @@ use super::behave::{
     curve_affine_coordinate_method, curve_constant_params, curve_projective_arithmetic,
     curve_projective_coordinate_method,
 };
-use ff::{Field, PrimeField};
-use pasta_curves::Fp;
+use pairing::bn256::Fr as Fp;
+use pairing::group::ff::{Field, PrimeField};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 const CURVE_A: Fp = Fp::one();
@@ -93,7 +93,7 @@ curve_constant_params!(
 #[cfg(test)]
 mod tests {
     use super::{Ep, EpAffine, Fp};
-    use ff::Field;
+    use pairing::group::ff::Field;
     use rand_core::OsRng;
 
     #[test]
