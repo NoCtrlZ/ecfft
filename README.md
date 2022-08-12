@@ -43,19 +43,19 @@ $P(X)$ degree is $2^k$ and, $P_0(X)$ and $P_1$ degree are $2^{k-1}$ because thes
 ECFFT curve can be defined as following.
 
 $$
-y^2 = x^3 + x + 23665697887148517506426806798051226694671519983424102823343279587811911881026
+y^2 = x^3 + x + 5612291247948481584627780310922020304781354847659642188369727566000581075360
 $$
 
 You can find curve, subgroup and isogenies with [utils](https://github.com/ashWhiteHat/ecfft_utils).
 
 ## Todo
 
-- [ ] Find curve
-- [ ] Find generator
-- [ ] Find coset
-- [ ] Precompute coset group
-- [ ] Precompute coset projective
-- [ ] Find isogeny
+- [x] Find curve
+- [x] Find generator
+- [x] Find coset
+- [x] Precompute coset group
+- [x] Precompute coset projective
+- [x] Find isogeny
 - [ ] Polynomial decomposion
 - [ ] Extend operation
 - [ ] Polynomial multiplication
