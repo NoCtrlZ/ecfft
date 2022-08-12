@@ -25,52 +25,38 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 const CURVE_A: Fp = Fp::one();
 
 const CURVE_B: Fp = Fp::from_raw([
-    0xedc87ab655e55142,
-    0xd76d8e4277cb9048,
-    0xc6ad51a6a7fe7a43,
-    0x34524f71a21a7096,
+    0x5dcdee14b5ed61a0,
+    0x35df7da06ba32982,
+    0x3bfb29b83daa1fd1,
+    0xc6871bc29d46163,
 ]);
 
 const GENERATOR_X: Fp = Fp::from_raw([
-    0x4da26202dffa62a8,
-    0x8406aac002f8b832,
-    0xf60aecbfc30e57f7,
-    0x1d62ba1b544c4f84,
+    0xa6cbe58e064a6b0c,
+    0xe067e9f0c64a3125,
+    0xb2875bc26ec52bee,
+    0xcff00b8abd9119b,
 ]);
 
 const GENERATOR_Y: Fp = Fp::from_raw([
-    0x52f8ada18c2b96dc,
-    0xedd674d51f009506,
-    0x17abe167e59849de,
-    0x620e16d2e51fdfa,
-]);
-
-const SUBGROUP_GENERATOR_X: Fp = Fp::from_raw([
-    0xb8232a4ceb8b38a0,
-    0x7f33b4d8afd508ca,
-    0x4fa8c6d72ce6acb4,
-    0x169edf7b95680fac,
-]);
-
-const SUBGROUP_GENERATOR_Y: Fp = Fp::from_raw([
-    0xe42dd096663043c1,
-    0xfe9dcd6de011ea03,
-    0x27603573acd1fcbd,
-    0x51a48a414e8239d,
+    0xc0b0b0de539981b4,
+    0x2d43482567de0148,
+    0x0ac0f5b3615a7946,
+    0x2ef5a31d89db82f6,
 ]);
 
 const REPRESENTATIVE_X: Fp = Fp::from_raw([
-    0x5b1575e3d64364c7,
-    0x8f4b66263e159043,
-    0xb8787be360f5270b,
-    0x1ac2d405d53f2333,
+    0x3013ff91324dd873,
+    0x497c46cd5f370537,
+    0x3390169392010587,
+    0x19d9b63388a8b653,
 ]);
 
 const REPRESENTATIVE_Y: Fp = Fp::from_raw([
-    0x641bc6c587cf1cb9,
-    0x6082deb9cca88fef,
-    0x802db2846bbce985,
-    0x3488bbb09671330,
+    0x9d3ee38d780e552e,
+    0x867ccec0c36810ab,
+    0xc9d8e37e568729c1,
+    0x737e1ab7c2b3a75,
 ]);
 
 curve_affine_coordinate_method!(EpAffine, Fp, CURVE_A, CURVE_B);
@@ -84,8 +70,6 @@ curve_constant_params!(
     Fp,
     GENERATOR_X,
     GENERATOR_Y,
-    SUBGROUP_GENERATOR_X,
-    SUBGROUP_GENERATOR_Y,
     REPRESENTATIVE_X,
     REPRESENTATIVE_Y
 );
@@ -101,17 +85,11 @@ mod tests {
         let affine_generator = EpAffine::generator();
         let projective_generator = Ep::generator();
 
-        let affine_subgroup_generator = EpAffine::subgroup_generator();
-        let projective_subgroup_generator = Ep::subgroup_generator();
-
         let affine_representative = EpAffine::representative();
         let projective_representative = Ep::representative();
 
         assert_eq!(affine_generator.is_on_curve().unwrap_u8(), 1);
         assert_eq!(projective_generator.is_on_curve().unwrap_u8(), 1);
-
-        assert_eq!(affine_subgroup_generator.is_on_curve().unwrap_u8(), 1);
-        assert_eq!(projective_subgroup_generator.is_on_curve().unwrap_u8(), 1);
 
         assert_eq!(affine_representative.is_on_curve().unwrap_u8(), 1);
         assert_eq!(projective_representative.is_on_curve().unwrap_u8(), 1);
@@ -120,9 +98,9 @@ mod tests {
     #[test]
     fn test_add_points() {
         let projective_representative = Ep::representative();
-        let projective_subgroup_generator = Ep::subgroup_generator();
+        let projective_generator = Ep::generator();
 
-        let add = projective_subgroup_generator + projective_representative;
+        let add = projective_generator + projective_representative;
         assert_eq!(add.is_on_curve().unwrap_u8(), 1);
     }
 
@@ -136,17 +114,17 @@ mod tests {
 
     #[test]
     fn test_subgroup_order() {
-        let projective_subgroup_generator = Ep::subgroup_generator();
-        let order = 1 << 12;
-        let identity = projective_subgroup_generator * Fp::from_raw([order, 0, 0, 0]);
+        let projective_generator = Ep::generator();
+        let order = 1 << 14;
+        let identity = projective_generator * Fp::from_raw([order, 0, 0, 0]);
 
         assert_eq!(identity.is_identity().unwrap_u8(), 1);
     }
 
     #[test]
     fn test_to_affine() {
-        let projective_subgroup_generator = Ep::subgroup_generator();
-        let random_point = projective_subgroup_generator * Fp::random(OsRng);
+        let projective_generator = Ep::generator();
+        let random_point = projective_generator * Fp::random(OsRng);
         let affine_point = random_point.to_affine();
 
         assert_eq!(affine_point.is_on_curve().unwrap_u8(), 1);

@@ -47,3 +47,15 @@ y^2 = x^3 + x + 2366569788714851750642680679805122669467151998342410282334327958
 $$
 
 You can find curve, subgroup and isogenies with [utils](https://github.com/ashWhiteHat/ecfft_utils).
+
+## Todo
+
+- [ ] Find curve
+- [ ] Find generator
+- [ ] Find coset
+- [ ] Precompute coset group
+- [ ] Precompute coset projective
+- [ ] Find isogeny
+- [ ] Polynomial decomposion
+- [ ] Extend operation
+- [ ] Polynomial multiplication

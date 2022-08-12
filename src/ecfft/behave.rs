@@ -382,20 +382,12 @@ macro_rules! curve_affine_coordinate_method {
 }
 
 macro_rules! curve_constant_params {
-    ($curve:ident, $curve_affine:ident, $field:ident, $generator_x:ident, $generator_y:ident, $subgroup_generator_x:ident, $subgroup_generator_y:ident, $representative_x:ident, $representative_y:ident) => {
+    ($curve:ident, $curve_affine:ident, $field:ident, $generator_x:ident, $generator_y:ident, $representative_x:ident, $representative_y:ident) => {
         impl $curve {
             fn generator() -> Self {
                 Self {
                     x: $generator_x,
                     y: $generator_y,
-                    z: Fp::one(),
-                }
-            }
-
-            pub(crate) fn subgroup_generator() -> Self {
-                Self {
-                    x: $subgroup_generator_x,
-                    y: $subgroup_generator_y,
                     z: Fp::one(),
                 }
             }
@@ -414,13 +406,6 @@ macro_rules! curve_constant_params {
                 $curve_affine {
                     x: $generator_x,
                     y: $generator_y,
-                }
-            }
-
-            fn subgroup_generator() -> Self {
-                $curve_affine {
-                    x: $subgroup_generator_x,
-                    y: $subgroup_generator_y,
                 }
             }
 

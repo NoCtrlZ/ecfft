@@ -11,20 +11,20 @@ impl EcFftParams {
     pub fn new(k: usize) -> Self {
         assert!(k == 12);
         let n = 1 << k;
-        let mut acc = Ep::subgroup_generator();
+        // let mut acc = Ep::subgroup_generator();
         let presentative = Ep::representative();
 
         let mut even = Vec::new();
         let mut odd = Vec::new();
 
         (0..n).for_each(|i| {
-            let coset = presentative + acc;
-            acc = acc + Ep::subgroup_generator();
-            if i % 2 == 1 {
-                odd.push(coset.to_affine().point_projective())
-            } else {
-                even.push(coset.to_affine().point_projective())
-            }
+            // let coset = presentative + acc;
+            // acc = acc + Ep::subgroup_generator();
+            // if i % 2 == 1 {
+            //     odd.push(coset.to_affine().point_projective())
+            // } else {
+            //     even.push(coset.to_affine().point_projective())
+            // }
         });
 
         EcFftParams {
