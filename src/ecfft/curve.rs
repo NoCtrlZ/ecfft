@@ -46,17 +46,17 @@ const GENERATOR_Y: Fp = Fp::from_raw([
 ]);
 
 const REPRESENTATIVE_X: Fp = Fp::from_raw([
-    0x3013ff91324dd873,
-    0x497c46cd5f370537,
-    0x3390169392010587,
-    0x19d9b63388a8b653,
+    0x43cc2220bc2c43d9,
+    0x2b4975b0074a4c19,
+    0x49e9941334ba73f5,
+    0x13305a0c7fac8d4e,
 ]);
 
 const REPRESENTATIVE_Y: Fp = Fp::from_raw([
-    0x9d3ee38d780e552e,
-    0x867ccec0c36810ab,
-    0xc9d8e37e568729c1,
-    0x737e1ab7c2b3a75,
+    0xe85005efc204f710,
+    0x70a01a702609f044,
+    0x58d344b7260f9ab4,
+    0x1d252a06a64cfbef,
 ]);
 
 curve_affine_coordinate_method!(EpAffine, Fp, CURVE_A, CURVE_B);
@@ -85,14 +85,14 @@ mod tests {
         let affine_generator = EpAffine::generator();
         let projective_generator = Ep::generator();
 
-        // let affine_representative = EpAffine::representative();
-        // let projective_representative = Ep::representative();
+        let affine_representative = EpAffine::representative();
+        let projective_representative = Ep::representative();
 
         assert_eq!(affine_generator.is_on_curve().unwrap_u8(), 1);
         assert_eq!(projective_generator.is_on_curve().unwrap_u8(), 1);
 
-        // assert_eq!(affine_representative.is_on_curve().unwrap_u8(), 1);
-        // assert_eq!(projective_representative.is_on_curve().unwrap_u8(), 1);
+        assert_eq!(affine_representative.is_on_curve().unwrap_u8(), 1);
+        assert_eq!(projective_representative.is_on_curve().unwrap_u8(), 1);
     }
 
     #[test]
