@@ -384,7 +384,7 @@ macro_rules! curve_affine_coordinate_method {
 macro_rules! curve_constant_params {
     ($curve:ident, $curve_affine:ident, $field:ident, $generator_x:ident, $generator_y:ident, $representative_x:ident, $representative_y:ident) => {
         impl $curve {
-            fn generator() -> Self {
+            pub(crate) fn generator() -> Self {
                 Self {
                     x: $generator_x,
                     y: $generator_y,
@@ -402,7 +402,7 @@ macro_rules! curve_constant_params {
         }
 
         impl $curve_affine {
-            fn generator() -> Self {
+            pub(crate) fn generator() -> Self {
                 $curve_affine {
                     x: $generator_x,
                     y: $generator_y,
