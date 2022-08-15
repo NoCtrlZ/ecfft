@@ -12,7 +12,7 @@ impl EcFftParams {
     pub fn new(k: usize) -> Self {
         assert!(k == 14);
         let n = 1 << k;
-        let mut acc = Ep::generator();
+        let acc = Ep::generator();
         let presentative = Ep::representative();
 
         let mut s = Vec::new();
@@ -39,7 +39,7 @@ impl EcFftParams {
 
 #[cfg(test)]
 mod tests {
-    use super::{EcFftParams, Fp, Isogeny};
+    use super::{EcFftParams, Isogeny};
 
     #[test]
     fn test_projective_domain() {
@@ -55,25 +55,27 @@ mod tests {
     fn test_isogeny_half_sizing() {
         let k = 14;
         let ecfft_params = EcFftParams::new(k);
-        let (s, s_prime) = ecfft_params.get_domain();
+        let (mut s, mut s_prime) = ecfft_params.get_domain();
         let isogeny = Isogeny::new(0);
-        let s1: Vec<Fp> = s.iter().map(|coeff| isogeny.evaluate(*coeff)).collect();
-        let s1_prime: Vec<Fp> = s_prime
+        s = s.iter().map(|coeff| isogeny.evaluate(*coeff)).collect();
+        s_prime = s_prime
             .iter()
             .map(|coeff| isogeny.evaluate(*coeff))
             .collect();
-        let isogeny = Isogeny::new(1);
-        let mut s2: Vec<Fp> = s1.iter().map(|coeff| isogeny.evaluate(*coeff)).collect();
-        let mut s2_prime: Vec<Fp> = s1_prime
-            .iter()
-            .map(|coeff| isogeny.evaluate(*coeff))
-            .collect();
-        s2.sort();
-        s2.dedup();
-        s2_prime.sort();
-        s2_prime.dedup();
 
-        assert_eq!(1 << (k - 2), s2.len());
-        assert_eq!(1 << (k - 2), s2_prime.len());
+        for i in 1..k {
+            let isogeny = Isogeny::new(i);
+            s = s.iter().map(|coeff| isogeny.evaluate(*coeff)).collect();
+            s_prime = s_prime
+                .iter()
+                .map(|coeff| isogeny.evaluate(*coeff))
+                .collect();
+            s.sort();
+            s.dedup();
+            s_prime.sort();
+            s_prime.dedup();
+            assert_eq!(1 << (k - (i + 1)), s.len());
+            assert_eq!(1 << (k - (i + 1)), s_prime.len());
+        }
     }
 }
