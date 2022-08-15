@@ -56,9 +56,15 @@ mod tests {
         let k = 14;
         let ecfft_params = EcFftParams::new(k);
         let (s, s_prime) = ecfft_params.get_domain();
+        let isogeny = Isogeny::new(0);
+        let s1: Vec<Fp> = s.iter().map(|coeff| isogeny.evaluate(*coeff)).collect();
+        let s1_prime: Vec<Fp> = s_prime
+            .iter()
+            .map(|coeff| isogeny.evaluate(*coeff))
+            .collect();
         let isogeny = Isogeny::new(1);
-        let mut s2: Vec<Fp> = s.iter().map(|coeff| isogeny.evaluate(*coeff)).collect();
-        let mut s2_prime: Vec<Fp> = s_prime
+        let mut s2: Vec<Fp> = s1.iter().map(|coeff| isogeny.evaluate(*coeff)).collect();
+        let mut s2_prime: Vec<Fp> = s1_prime
             .iter()
             .map(|coeff| isogeny.evaluate(*coeff))
             .collect();
