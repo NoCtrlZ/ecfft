@@ -6,6 +6,7 @@ mod utils;
 use utils::{swap_bit_reverse, EcFftCache};
 
 use pairing::bn256::Fq as Fp;
+use rayon::{join, prelude::*};
 
 // precomputed params for ecfft
 #[derive(Clone, Debug)]
@@ -31,13 +32,18 @@ impl EcFft {
 
         swap_bit_reverse(coeffs, n, self.k);
 
-        ecfft_arithmetic(coeffs, n)
+        ecfft_arithmetic(coeffs, n, 1, &self.cache)
     }
 }
 
 // ecfft using divide and conquer algorithm
-fn ecfft_arithmetic(coeffs: &mut [Fp], n: usize) {
+fn ecfft_arithmetic(coeffs: &mut [Fp], n: usize, depth: u32, cache: &EcFftCache) {
     if n == 1 {
     } else {
+        let (left, right) = coeffs.split_at_mut(n / 2);
+        join(
+            || ecfft_arithmetic(left, n / 2, depth + 1, cache),
+            || ecfft_arithmetic(right, n / 2, depth + 1, cache),
+        );
     }
 }

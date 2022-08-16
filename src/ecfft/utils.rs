@@ -38,15 +38,14 @@ impl EcFftCache {
 
         for i in 1..k {
             let isogeny = Isogeny::new(i);
-            s = s.iter().map(|coeff| isogeny.evaluate(*coeff)).collect();
-            s_prime = s_prime
+            s = s[..1 << (k - (1 + i))]
                 .iter()
                 .map(|coeff| isogeny.evaluate(*coeff))
                 .collect();
-            s.sort();
-            s.dedup();
-            s_prime.sort();
-            s_prime.dedup();
+            s_prime = s_prime[..1 << (k - (1 + i))]
+                .iter()
+                .map(|coeff| isogeny.evaluate(*coeff))
+                .collect();
             params.push(EcFftree {
                 domain: (s.clone(), s_prime.clone()),
             });
@@ -79,20 +78,7 @@ mod tests {
     use super::{EcFftCache, Isogeny};
 
     #[test]
-    fn test_projective_domain() {
-        let k = 14;
-        let ecfft_params = EcFftCache::new(k);
-
-        for i in 0..k {
-            let (s, s_prime) = ecfft_params.get_domain(i as usize);
-
-            assert_eq!(1 << (k - (1 + i)), s.len());
-            assert_eq!(1 << (k - (1 + i)), s_prime.len());
-        }
-    }
-
-    #[test]
-    fn test_isogeny_half_sizing() {
+    fn test_isogeny_and_domain() {
         let k = 14;
         let ecfft_params = EcFftCache::new(k);
         let (mut s, mut s_prime) = ecfft_params.get_domain(0);
@@ -108,8 +94,16 @@ mod tests {
             s.dedup();
             s_prime.sort();
             s_prime.dedup();
+
             assert_eq!(1 << (k - (i + 1)), s.len());
             assert_eq!(1 << (k - (i + 1)), s_prime.len());
+
+            let (mut l, mut l_prime) = ecfft_params.get_domain(i as usize);
+            l.sort();
+            l_prime.sort();
+
+            assert_eq!(s, l);
+            assert_eq!(s_prime, l_prime);
         }
     }
 }
