@@ -8,7 +8,7 @@ pub(crate) struct Isogeny {
     b: Fp,
 }
 impl Isogeny {
-    pub(crate) fn new(depth: usize) -> Isogeny {
+    pub(crate) fn new(depth: u32) -> Isogeny {
         match depth {
             0 => Isogeny {
                 a: Fp::from_raw([

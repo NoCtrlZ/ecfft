@@ -2,19 +2,18 @@ use super::curve::Ep;
 use super::isogeny::Isogeny;
 use pairing::bn256::Fq as Fp;
 
-// precomputed params for ecfft
 #[derive(Clone, Debug)]
-pub(crate) struct EcFftParams {
-    params: Vec<EcFftCache>,
+pub(crate) struct EcFftCache {
+    params: Vec<EcFftree>,
 }
 
 #[derive(Clone, Debug)]
-struct EcFftCache {
-    domain: (Vec<Fp>, Vec<Fp>),
+struct EcFftree {
+    pub(crate) domain: (Vec<Fp>, Vec<Fp>),
 }
 
-impl EcFftParams {
-    pub fn new(k: usize) -> Self {
+impl EcFftCache {
+    pub fn new(k: u32) -> Self {
         assert!(k == 14);
         let n = 1 << k;
         let acc = Ep::generator();
@@ -33,7 +32,7 @@ impl EcFftParams {
                 s_prime.push(isogeny.evaluate(coset.to_affine().point_projective()))
             }
         });
-        params.push(EcFftCache {
+        params.push(EcFftree {
             domain: (s.clone(), s_prime.clone()),
         });
 
@@ -48,12 +47,12 @@ impl EcFftParams {
             s.dedup();
             s_prime.sort();
             s_prime.dedup();
-            params.push(EcFftCache {
+            params.push(EcFftree {
                 domain: (s.clone(), s_prime.clone()),
             });
         }
 
-        EcFftParams { params }
+        EcFftCache { params }
     }
 
     pub fn get_domain(&self, depth: usize) -> (Vec<Fp>, Vec<Fp>) {
@@ -64,17 +63,28 @@ impl EcFftParams {
     }
 }
 
+pub(crate) fn swap_bit_reverse(a: &mut [Fp], n: usize, k: u32) {
+    assert!(k <= 64);
+    let diff = 64 - k;
+    for i in 0..n as u64 {
+        let ri = i.reverse_bits() >> diff;
+        if i < ri {
+            a.swap(ri as usize, i as usize);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{EcFftParams, Isogeny};
+    use super::{EcFftCache, Isogeny};
 
     #[test]
     fn test_projective_domain() {
         let k = 14;
-        let ecfft_params = EcFftParams::new(k);
+        let ecfft_params = EcFftCache::new(k);
 
         for i in 0..k {
-            let (s, s_prime) = ecfft_params.get_domain(i);
+            let (s, s_prime) = ecfft_params.get_domain(i as usize);
 
             assert_eq!(1 << (k - (1 + i)), s.len());
             assert_eq!(1 << (k - (1 + i)), s_prime.len());
@@ -84,7 +94,7 @@ mod tests {
     #[test]
     fn test_isogeny_half_sizing() {
         let k = 14;
-        let ecfft_params = EcFftParams::new(k);
+        let ecfft_params = EcFftCache::new(k);
         let (mut s, mut s_prime) = ecfft_params.get_domain(0);
 
         for i in 1..k {
