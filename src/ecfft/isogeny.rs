@@ -218,4 +218,9 @@ impl Isogeny {
         let denominator = *a + x;
         numerator * denominator.invert().unwrap()
     }
+
+    pub(crate) fn evaluate_with_denominator(&self, x: Fp) -> Fp {
+        let Isogeny { a, b } = self;
+        *a + x
+    }
 }
