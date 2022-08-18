@@ -10,7 +10,7 @@ use rayon::{join, prelude::*};
 
 // precomputed params for ecfft
 #[derive(Clone, Debug)]
-pub(crate) struct EcFft {
+pub struct EcFft {
     // polynomial degree 2^k
     k: u32,
     // precomputed ecfft params
@@ -25,8 +25,8 @@ impl EcFft {
         EcFft { k, cache }
     }
 
-    // perform ecfft
-    pub fn fft(&self, coeffs: &mut [Fp]) {
+    // perform extend operation
+    pub fn extend(&self, coeffs: &mut [Fp]) {
         let n = 1 << self.k;
         assert_eq!(coeffs.len(), n);
 
@@ -34,6 +34,9 @@ impl EcFft {
 
         ecfft_arithmetic(coeffs, n, 1, &self.cache)
     }
+
+    // perform enter operation
+    pub fn enter(&self, coeffs: &mut [Fp]) {}
 }
 
 // ecfft using divide and conquer algorithm
