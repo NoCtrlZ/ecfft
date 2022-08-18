@@ -3,7 +3,7 @@ mod curve;
 mod isogeny;
 mod utils;
 
-use utils::{swap_bit_reverse, EcFftCache};
+use utils::{butterfly_arithmetic, swap_bit_reverse, EcFftCache};
 
 use pairing::bn256::Fq as Fp;
 use rayon::{join, prelude::*};
@@ -14,39 +14,46 @@ pub struct EcFft {
     // polynomial degree 2^k
     k: u32,
     // precomputed ecfft params
-    cache: EcFftCache,
+    caches: EcFftCache,
 }
 
 impl EcFft {
     pub fn new(k: u32) -> Self {
         assert!(k == 14);
-        let cache = EcFftCache::new(k);
+        let caches = EcFftCache::new(k);
 
-        EcFft { k, cache }
+        EcFft { k, caches }
     }
 
-    // perform extend operation
-    pub fn extend(&self, coeffs: &mut [Fp]) {
-        let n = 1 << self.k;
+    // evaluate n/2 size of polynomial on n size coset
+    pub fn extend(&self, coeffs: &mut [Fp]) -> Vec<Fp> {
+        let n = 1 << (self.k - 1);
         assert_eq!(coeffs.len(), n);
 
-        swap_bit_reverse(coeffs, n, self.k);
+        swap_bit_reverse(coeffs, n, self.k - 1);
 
-        ecfft_arithmetic(coeffs, n, 1, &self.cache)
+        ecfft_arithmetic(coeffs, n, 0, &self.caches)
     }
 
-    // perform enter operation
-    pub fn enter(&self, coeffs: &mut [Fp]) {}
+    // transform n size of polynomial to normal form
+    pub fn enter(&self, coeffs: &mut [Fp]) {
+        let n = 1 << self.k;
+        assert_eq!(coeffs.len(), n);
+    }
 }
 
 // ecfft using divide and conquer algorithm
-fn ecfft_arithmetic(coeffs: &mut [Fp], n: usize, depth: u32, cache: &EcFftCache) {
+fn ecfft_arithmetic(coeffs: &mut [Fp], n: usize, depth: usize, caches: &EcFftCache) -> Vec<Fp> {
     if n == 1 {
+        assert_eq!(coeffs.len(), n);
+        return coeffs.to_vec();
     } else {
         let (left, right) = coeffs.split_at_mut(n / 2);
-        join(
-            || ecfft_arithmetic(left, n / 2, depth + 1, cache),
-            || ecfft_arithmetic(right, n / 2, depth + 1, cache),
+        let (former, latter) = join(
+            || ecfft_arithmetic(left, n / 2, depth + 1, caches),
+            || ecfft_arithmetic(right, n / 2, depth + 1, caches),
         );
+        butterfly_arithmetic(coeffs, caches.get_cache(depth));
+        former
     }
 }

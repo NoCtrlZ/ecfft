@@ -50,26 +50,19 @@ mod tests {
         }
     }
 
-    proptest! {
-        #![proptest_config(ProptestConfig::with_cases(100))]
-        #[test]
-        fn ecfft_poly_multiplication_test(k in 3_u32..10) {
-            let mut poly_a = arb_poly_fq(k-1);
-            let mut poly_b = arb_poly_fq(k-1);
+    #[test]
+    fn ecfft_poly_multiplication_test() {
+        let k = 14;
+        let mut poly_a = arb_poly_fq(k - 1);
+        let mut poly_b = arb_poly_fq(k - 1);
 
-            // order(n^2) normal multiplication
-            let poly_c = naive_multiply_fq(poly_a.clone(), poly_b.clone());
+        // order(n^2) normal multiplication
+        let poly_c = naive_multiply_fq(poly_a.clone(), poly_b.clone());
 
-            // order(nlog^2n) ecfft multplication
-            let ecfft = EcFft::new(k);
-            poly_a.resize(1<<k, Fq::zero());
-            poly_b.resize(1<<k, Fq::zero());
-            ecfft.extend(&mut poly_a);
-            ecfft.extend(&mut poly_b);
-            let mut poly_d = point_multiply_fq(poly_a, poly_b);
-            ecfft.enter(&mut poly_d);
-
-            assert_eq!(poly_c, poly_d)
-        }
+        // order(nlog^2n) ecfft multplication
+        let ecfft = EcFft::new(k);
+        println!("precomputed");
+        ecfft.extend(&mut poly_a);
+        ecfft.extend(&mut poly_b);
     }
 }

@@ -4,12 +4,17 @@ use pairing::bn256::Fq as Fp;
 
 #[derive(Clone, Debug)]
 pub(crate) struct EcFftCache {
-    params: Vec<EcFftree>,
+    pub(crate) cache: Vec<FfTree>,
 }
 
 #[derive(Clone, Debug)]
-struct EcFftree {
-    pub(crate) domain: (Vec<Fp>, Vec<Fp>),
+pub(crate) struct FfTree {
+    // evaluation domain same size with polynomial
+    domain: (Vec<Fp>, Vec<Fp>),
+    // factor for performing multiplication
+    factor: Vec<((Fp, Fp), (Fp, Fp))>,
+    // inverse factor for performing multiplication
+    inv_factor: Vec<((Fp, Fp), (Fp, Fp))>,
 }
 
 impl EcFftCache {
@@ -19,9 +24,11 @@ impl EcFftCache {
         let acc = Ep::generator();
         let presentative = Ep::representative();
 
-        let mut params = Vec::new();
+        let mut cache = Vec::new();
         let mut s = Vec::new();
         let mut s_prime = Vec::new();
+        let mut factor = Vec::new();
+        let mut inv_factor = Vec::new();
 
         let isogeny = Isogeny::new(0);
         (0..n).for_each(|i| {
@@ -31,9 +38,6 @@ impl EcFftCache {
             } else {
                 s_prime.push(isogeny.evaluate(coset.to_affine().point_projective()))
             }
-        });
-        params.push(EcFftree {
-            domain: (s.clone(), s_prime.clone()),
         });
 
         for i in 1..k {
@@ -46,19 +50,27 @@ impl EcFftCache {
                 .iter()
                 .map(|coeff| isogeny.evaluate(*coeff))
                 .collect();
-            params.push(EcFftree {
+            cache.push(FfTree {
                 domain: (s.clone(), s_prime.clone()),
+                factor: (Fp::zero(), Fp::zero()),
             });
         }
 
-        EcFftCache { params }
+        EcFftCache { cache }
     }
 
-    pub fn get_domain(&self, depth: usize) -> (Vec<Fp>, Vec<Fp>) {
-        (
-            self.params[depth].domain.0.clone(),
-            self.params[depth].domain.1.clone(),
-        )
+    pub(crate) fn get_cache(&self, depth: usize) -> &FfTree {
+        &self.cache[depth]
+    }
+}
+
+impl FfTree {
+    pub(crate) fn get_domain(&self) -> &(Vec<Fp>, Vec<Fp>) {
+        &self.domain
+    }
+
+    pub(crate) fn get_factor(&self) -> &(Fp, Fp) {
+        &self.factor
     }
 }
 
@@ -73,6 +85,14 @@ pub(crate) fn swap_bit_reverse(a: &mut [Fp], n: usize, k: u32) {
     }
 }
 
+pub(crate) fn butterfly_arithmetic(coeffs: &mut [Fp], cache: &FfTree) {
+    let (s, s_prime) = cache.get_domain();
+    assert_eq!(coeffs.len(), s.len());
+    assert_eq!(coeffs.len(), s_prime.len());
+    let (one, two) = cache.get_factor();
+    coeffs.iter_mut().for_each(|(a)| {});
+}
+
 #[cfg(test)]
 mod tests {
     use super::{EcFftCache, Isogeny};
@@ -81,7 +101,8 @@ mod tests {
     fn test_isogeny_and_domain() {
         let k = 14;
         let ecfft_params = EcFftCache::new(k);
-        let (mut s, mut s_prime) = ecfft_params.get_domain(0);
+        let cache = ecfft_params.get_cache(0);
+        let (mut s, mut s_prime) = cache.domain.clone();
 
         for i in 1..k {
             let isogeny = Isogeny::new(i);
@@ -98,7 +119,8 @@ mod tests {
             assert_eq!(1 << (k - (i + 1)), s.len());
             assert_eq!(1 << (k - (i + 1)), s_prime.len());
 
-            let (mut l, mut l_prime) = ecfft_params.get_domain(i as usize);
+            let cache = ecfft_params.get_cache(i as usize);
+            let (mut l, mut l_prime) = cache.domain.clone();
             l.sort();
             l_prime.sort();
 
