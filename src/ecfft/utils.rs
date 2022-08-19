@@ -1,5 +1,6 @@
 use super::curve::Ep;
 use super::isogeny::Isogeny;
+use pairing::arithmetic::BaseExt;
 use pairing::bn256::Fq as Fp;
 
 #[derive(Clone, Debug)]
@@ -27,8 +28,6 @@ impl EcFftCache {
         let mut cache = Vec::new();
         let mut s = Vec::new();
         let mut s_prime = Vec::new();
-        let mut factor = Vec::new();
-        let mut inv_factor = Vec::new();
 
         (0..n).for_each(|i| {
             let coset = presentative + acc * Fp::from_raw([i, 0, 0, 0]);
@@ -41,18 +40,46 @@ impl EcFftCache {
 
         for i in 0..k {
             let isogeny = Isogeny::new(i);
-            s = s[..1 << (k - (1 + i))]
+            let degree_n = 1 << (k - (1 + i));
+            let half_defree_n = degree_n / 2;
+            let exp = &[(degree_n - 1) as u64, 0, 0, 0];
+            s = s[..degree_n]
                 .iter()
                 .map(|coeff| isogeny.evaluate(*coeff))
                 .collect();
-            s_prime = s_prime[..1 << (k - (1 + i))]
+            s_prime = s_prime[..degree_n]
                 .iter()
                 .map(|coeff| isogeny.evaluate(*coeff))
+                .collect();
+            let isogeny = Isogeny::new(i + 1);
+            let inv_factor = s[..half_defree_n]
+                .iter()
+                .zip(&s[half_defree_n..])
+                .map(|(a, b)| {
+                    assert_eq!(isogeny.evaluate(*a), isogeny.evaluate(*b));
+                    let f1 = isogeny.evaluate_with_denominator(*a).pow(exp);
+                    let f2 = a * f1;
+                    let f3 = isogeny.evaluate_with_denominator(*b).pow(exp);
+                    let f4 = b * f3;
+                    ((f1, f2), (f3, f4))
+                })
+                .collect();
+            let factor = s_prime[..half_defree_n]
+                .iter()
+                .zip(&s_prime[half_defree_n..])
+                .map(|(a, b)| {
+                    assert_eq!(isogeny.evaluate(*a), isogeny.evaluate(*b));
+                    let f1 = isogeny.evaluate_with_denominator(*a).pow(exp);
+                    let f2 = a * f1;
+                    let f3 = isogeny.evaluate_with_denominator(*b).pow(exp);
+                    let f4 = b * f3;
+                    ((f1, f2), (f3, f4))
+                })
                 .collect();
             cache.push(FfTree {
                 domain: (s.clone(), s_prime.clone()),
-                factor: factor.clone(),
-                inv_factor: inv_factor.clone(),
+                factor,
+                inv_factor,
             });
         }
 
@@ -95,7 +122,7 @@ pub(crate) fn butterfly_arithmetic(coeffs: &mut [Fp], cache: &FfTree) {
 
 #[cfg(test)]
 mod tests {
-    use super::{EcFftCache, Isogeny};
+    use super::{BaseExt, EcFftCache, Isogeny};
 
     #[test]
     fn test_isogeny_and_domain() {
@@ -105,6 +132,8 @@ mod tests {
         let (mut s, mut s_prime) = cache.domain.clone();
 
         for i in 1..k {
+            let degree_n = 1 << (k - (1 + i));
+            let half_defree_n = degree_n / 2;
             let isogeny = Isogeny::new(i);
             s = s.iter().map(|coeff| isogeny.evaluate(*coeff)).collect();
             s_prime = s_prime
@@ -126,6 +155,18 @@ mod tests {
 
             assert_eq!(s, l);
             assert_eq!(s_prime, l_prime);
+
+            let isogeny = Isogeny::new(i + 1);
+            let (s, s_prime) = cache.domain.clone();
+            s[..half_defree_n]
+                .iter()
+                .zip(&s[half_defree_n..])
+                .zip(&s_prime[..half_defree_n])
+                .zip(&s_prime[half_defree_n..])
+                .for_each(|(((a, b), c), d)| {
+                    assert_eq!(isogeny.evaluate(*a), isogeny.evaluate(*b));
+                    assert_eq!(isogeny.evaluate(*c), isogeny.evaluate(*d));
+                });
         }
     }
 }

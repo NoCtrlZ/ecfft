@@ -206,9 +206,10 @@ impl Isogeny {
                     0x2a0aa2438baedb87,
                 ]),
             },
-            _ => {
-                unimplemented!()
-            }
+            _ => Isogeny {
+                a: Fp::one(),
+                b: Fp::one(),
+            },
         }
     }
 
@@ -220,7 +221,7 @@ impl Isogeny {
     }
 
     pub(crate) fn evaluate_with_denominator(&self, x: Fp) -> Fp {
-        let Isogeny { a, b } = self;
+        let Isogeny { a, b: _ } = self;
         *a + x
     }
 }
