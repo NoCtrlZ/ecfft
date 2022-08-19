@@ -26,7 +26,7 @@ impl EcFft {
     }
 
     // evaluate n/2 size of polynomial on n size coset
-    pub fn extend(&self, coeffs: &mut [Fp]) -> Vec<Fp> {
+    pub fn extend(&self, coeffs: &mut [Fp]) {
         let n = 1 << (self.k - 1);
         assert_eq!(coeffs.len(), n);
 
@@ -43,17 +43,16 @@ impl EcFft {
 }
 
 // ecfft using divide and conquer algorithm
-fn ecfft_arithmetic(coeffs: &mut [Fp], n: usize, depth: usize, caches: &EcFftCache) -> Vec<Fp> {
+fn ecfft_arithmetic(coeffs: &mut [Fp], n: usize, depth: usize, caches: &EcFftCache) {
     if n == 1 {
-        assert_eq!(coeffs.len(), n);
-        return coeffs.to_vec();
     } else {
+        let cache = caches.get_cache(depth);
         let (left, right) = coeffs.split_at_mut(n / 2);
-        let (former, latter) = join(
+        butterfly_arithmetic(left, right, cache.get_inv_factor());
+        join(
             || ecfft_arithmetic(left, n / 2, depth + 1, caches),
             || ecfft_arithmetic(right, n / 2, depth + 1, caches),
         );
-        butterfly_arithmetic(coeffs, caches.get_cache(depth));
-        former
+        butterfly_arithmetic(left, right, cache.get_factor());
     }
 }

@@ -56,6 +56,6 @@ You can find curve, subgroup and isogenies with [utils](https://github.com/ashWh
 - [x] Precompute coset group
 - [x] Precompute coset projective
 - [x] Find isogeny
-- [ ] Polynomial decomposion
-- [ ] Extend operation
+- [x] Polynomial decomposion
+- [x] Extend operation
 - [ ] Polynomial multiplication

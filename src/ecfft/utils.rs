@@ -91,14 +91,20 @@ pub(crate) fn swap_bit_reverse(a: &mut [Fp], n: usize, k: u32) {
     }
 }
 
-pub(crate) fn butterfly_arithmetic(coeffs: &mut [Fp], cache: &FfTree) {
-    let (s, s_prime) = cache.get_domain();
-    let factor = cache.get_factor();
-    let inv_factor = cache.get_inv_factor();
-    assert_eq!(coeffs.len(), s.len());
-    assert_eq!(coeffs.len(), s_prime.len());
-    assert_eq!(coeffs.len(), factor.len());
-    assert_eq!(coeffs.len(), inv_factor.len());
+pub(crate) fn butterfly_arithmetic(
+    left: &mut [Fp],
+    right: &mut [Fp],
+    factor: &Vec<((Fp, Fp), (Fp, Fp))>,
+) {
+    left.iter_mut()
+        .zip(right.iter_mut())
+        .zip(factor.iter())
+        .for_each(|((a, b), c)| {
+            let ((f0, f1), (f2, f3)) = c;
+            let (x, y) = (f0 * *a + f1 * *b, f2 * *a + f3 * *b);
+            *a = x;
+            *b = y;
+        })
 }
 
 #[cfg(test)]
@@ -149,5 +155,7 @@ mod tests {
                     assert_eq!(isogeny.evaluate(*c), isogeny.evaluate(*d));
                 });
         }
+        assert_eq!(s.len(), 1);
+        assert_eq!(s_prime.len(), 1);
     }
 }
