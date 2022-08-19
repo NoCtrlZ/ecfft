@@ -30,17 +30,16 @@ impl EcFftCache {
         let mut factor = Vec::new();
         let mut inv_factor = Vec::new();
 
-        let isogeny = Isogeny::new(0);
         (0..n).for_each(|i| {
             let coset = presentative + acc * Fp::from_raw([i, 0, 0, 0]);
             if i % 2 == 0 {
-                s.push(isogeny.evaluate(coset.to_affine().point_projective()))
+                s.push(coset.to_affine().point_projective())
             } else {
-                s_prime.push(isogeny.evaluate(coset.to_affine().point_projective()))
+                s_prime.push(coset.to_affine().point_projective())
             }
         });
 
-        for i in 1..k {
+        for i in 0..k {
             let isogeny = Isogeny::new(i);
             s = s[..1 << (k - (1 + i))]
                 .iter()
@@ -52,7 +51,8 @@ impl EcFftCache {
                 .collect();
             cache.push(FfTree {
                 domain: (s.clone(), s_prime.clone()),
-                factor: (Fp::zero(), Fp::zero()),
+                factor: factor.clone(),
+                inv_factor: inv_factor.clone(),
             });
         }
 
@@ -69,7 +69,7 @@ impl FfTree {
         &self.domain
     }
 
-    pub(crate) fn get_factor(&self) -> &(Fp, Fp) {
+    pub(crate) fn get_factor(&self) -> &Vec<((Fp, Fp), (Fp, Fp))> {
         &self.factor
     }
 }
@@ -87,10 +87,10 @@ pub(crate) fn swap_bit_reverse(a: &mut [Fp], n: usize, k: u32) {
 
 pub(crate) fn butterfly_arithmetic(coeffs: &mut [Fp], cache: &FfTree) {
     let (s, s_prime) = cache.get_domain();
+    let factor = cache.get_factor();
     assert_eq!(coeffs.len(), s.len());
     assert_eq!(coeffs.len(), s_prime.len());
-    let (one, two) = cache.get_factor();
-    coeffs.iter_mut().for_each(|(a)| {});
+    assert_eq!(coeffs.len(), factor.len());
 }
 
 #[cfg(test)]
