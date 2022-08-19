@@ -1,3 +1,4 @@
+use pairing::arithmetic::BaseExt;
 use pairing::bn256::Fq as Fp;
 use pairing::group::ff::Field;
 
@@ -223,5 +224,31 @@ impl Isogeny {
     pub(crate) fn evaluate_with_denominator(&self, x: Fp) -> Fp {
         let Isogeny { a, b: _ } = self;
         *a + x
+    }
+
+    pub(crate) fn domain_half_sizing(&self, domain: Vec<Fp>, size: usize) -> Vec<Fp> {
+        domain[..size]
+            .iter()
+            .map(|coeff| self.evaluate(*coeff))
+            .collect()
+    }
+
+    pub(crate) fn get_factor(
+        &self,
+        domain: &Vec<Fp>,
+        size: usize,
+        exp: &[u64; 4],
+    ) -> Vec<((Fp, Fp), (Fp, Fp))> {
+        domain[..size]
+            .iter()
+            .zip(&domain[size..])
+            .map(|(a, b)| {
+                let f1 = self.evaluate_with_denominator(*a).pow(exp);
+                let f2 = a * f1;
+                let f3 = self.evaluate_with_denominator(*b).pow(exp);
+                let f4 = b * f3;
+                ((f1, f2), (f3, f4))
+            })
+            .collect()
     }
 }
