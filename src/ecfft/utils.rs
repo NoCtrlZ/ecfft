@@ -4,7 +4,9 @@ use pairing::bn256::Fq as Fp;
 
 #[derive(Clone, Debug)]
 pub(crate) struct EcFftCache {
+    pub(crate) k: usize,
     pub(crate) cache: Vec<FfTree>,
+    pub(crate) coset: Vec<Fp>,
 }
 
 #[derive(Clone, Debug)]
@@ -18,12 +20,7 @@ pub(crate) struct FfTree {
 }
 
 impl EcFftCache {
-    pub fn new(k: u32, coset: Vec<Fp>) -> Self {
-        assert!(k == 14);
-        let n = 1 << k;
-        let acc = Ep::generator();
-        let presentative = Ep::representative();
-
+    pub fn new(k: usize, coset: Vec<Fp>) -> Self {
         let mut cache = Vec::new();
         let mut s = Vec::new();
         let mut s_prime = Vec::new();
@@ -57,7 +54,7 @@ impl EcFftCache {
             });
         }
 
-        EcFftCache { cache }
+        EcFftCache { k, cache, coset }
     }
 
     pub(crate) fn get_cache(&self, depth: usize) -> &FfTree {
