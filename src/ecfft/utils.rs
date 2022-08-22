@@ -18,7 +18,7 @@ pub(crate) struct FfTree {
 }
 
 impl EcFftCache {
-    pub fn new(k: u32) -> Self {
+    pub fn new(k: u32, coset: Vec<Fp>) -> Self {
         assert!(k == 14);
         let n = 1 << k;
         let acc = Ep::generator();
@@ -28,12 +28,11 @@ impl EcFftCache {
         let mut s = Vec::new();
         let mut s_prime = Vec::new();
 
-        (0..n).for_each(|i| {
-            let coset = presentative + acc * Fp::from_raw([i, 0, 0, 0]);
+        coset.iter().enumerate().for_each(|(i, elm)| {
             if i % 2 == 0 {
-                s.push(coset.to_affine().point_projective())
+                s.push(*elm)
             } else {
-                s_prime.push(coset.to_affine().point_projective())
+                s_prime.push(*elm)
             }
         });
 
@@ -76,22 +75,11 @@ impl FfTree {
     }
 
     pub(crate) fn get_inv_factor(&self) -> &Vec<((Fp, Fp), (Fp, Fp))> {
-        &self.factor
+        &self.inv_factor
     }
 }
 
-pub(crate) fn swap_bit_reverse(a: &mut [Fp], n: usize, k: u32) {
-    assert!(k <= 64);
-    let diff = 64 - k;
-    for i in 0..n as u64 {
-        let ri = i.reverse_bits() >> diff;
-        if i < ri {
-            a.swap(ri as usize, i as usize);
-        }
-    }
-}
-
-pub(crate) fn butterfly_arithmetic(
+pub(crate) fn matrix_arithmetic(
     left: &mut [Fp],
     right: &mut [Fp],
     factor: &Vec<((Fp, Fp), (Fp, Fp))>,
@@ -109,12 +97,22 @@ pub(crate) fn butterfly_arithmetic(
 
 #[cfg(test)]
 mod tests {
-    use super::{EcFftCache, Isogeny};
+    use super::{EcFftCache, Ep, Fp, Isogeny};
 
     #[test]
     fn test_isogeny_and_domain() {
         let k = 14;
-        let ecfft_params = EcFftCache::new(k);
+        let n = 1 << k;
+
+        let acc = Ep::generator();
+        let presentative = Ep::representative();
+        let coset: Vec<Fp> = (0..n)
+            .map(|i| {
+                let coset_point = presentative + acc * Fp::from_raw([i, 0, 0, 0]);
+                coset_point.to_affine().point_projective()
+            })
+            .collect();
+        let ecfft_params = EcFftCache::new(k, coset);
         let cache = ecfft_params.get_cache(0);
         let (mut s, mut s_prime) = cache.domain.clone();
 
