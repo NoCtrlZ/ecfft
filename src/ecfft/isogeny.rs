@@ -1,6 +1,7 @@
 use pairing::arithmetic::BaseExt;
 use pairing::bn256::Fq as Fp;
 use pairing::group::ff::Field;
+use rayon::prelude::*;
 
 // isogeny structure
 #[derive(Clone, Debug)]
@@ -228,7 +229,7 @@ impl Isogeny {
 
     pub(crate) fn domain_half_sizing(&self, domain: Vec<Fp>, size: usize) -> Vec<Fp> {
         domain[..size]
-            .iter()
+            .par_iter()
             .map(|coeff| self.evaluate(*coeff))
             .collect()
     }
@@ -240,7 +241,7 @@ impl Isogeny {
         exp: &[u64; 4],
     ) -> Vec<((Fp, Fp), (Fp, Fp))> {
         domain[..size]
-            .iter()
+            .par_iter()
             .zip(&domain[size..])
             .map(|(a, b)| {
                 let f1 = self.evaluate_with_denominator(*a).pow(exp);

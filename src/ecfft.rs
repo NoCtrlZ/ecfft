@@ -4,7 +4,7 @@ mod isogeny;
 mod utils;
 
 use curve::Ep;
-use utils::{matrix_arithmetic, EcFftCache};
+use utils::EcFftCache;
 
 use pairing::arithmetic::BaseExt;
 use pairing::bn256::Fq as Fp;
@@ -48,7 +48,7 @@ impl EcFft {
         assert_eq!(coeffs.len(), n);
 
         let mut coeffs_prime = coeffs.to_vec().clone();
-        self.ecfft(coeffs, &mut coeffs_prime, self.k);
+        self.ecfft(coeffs, &mut coeffs_prime, self.k - 1);
         coeffs_prime
     }
 
@@ -56,7 +56,10 @@ impl EcFft {
         let n = 1 << k;
         assert_eq!(coeffs.len(), n);
 
-        if n == 1 {}
+        if n == 1 {
+            return;
+        }
+
         let (low, high) = coeffs.split_at_mut(n / 2);
         let (low_prime, high_prime) = coeffs_prime.split_at_mut(n / 2);
 
@@ -68,48 +71,25 @@ impl EcFft {
         low_prime.copy_from_slice(low);
         high_prime.copy_from_slice(high);
 
-        let coset = &self.caches[self.k - k].coset;
+        let cache = &self.caches[self.k - k];
 
-        assert_eq!(n, coset.len());
+        assert_eq!(n, cache.coset.len());
 
         (0..(n / 2)).for_each(|i| {
             coeffs[2 * i] =
-                low_prime[i] + coset[2 * i].pow(&[n as u64 / 2, 0, 0, 0]) * high_prime[i];
+                low_prime[i] + cache.coset[2 * i].pow(&[n as u64 / 2, 0, 0, 0]) * high_prime[i];
         });
 
-        join(|| self.extend(low_prime), || self.extend(high_prime));
+        join(|| cache.extend(low_prime), || cache.extend(high_prime));
 
         (0..(n / 2)).for_each(|i| {
             coeffs[2 * i + 1] =
-                low_prime[i] + coset[2 * i + 1].pow(&[n as u64 / 2, 0, 0, 0]) * high_prime[i];
+                low_prime[i] + cache.coset[2 * i + 1].pow(&[n as u64 / 2, 0, 0, 0]) * high_prime[i];
         });
     }
 
-    // evaluate n/2 size of polynomial on n size coset
-    fn extend(&self, coeffs: &mut [Fp]) {
-        let n = 1 << (self.k - 1);
-        assert_eq!(coeffs.len(), n);
-        let log_n = n.trailing_zeros() as usize;
-
-        low_degree_extention(coeffs, n, 0, &self.caches[self.k - log_n])
+    #[cfg(test)]
+    pub fn get_coset(&self, k: usize) -> Vec<Fp> {
+        self.caches[self.k - k].coset.clone()
     }
-
-    // transform n size of polynomial to normal form
-    pub fn enter(&self, coeffs: &mut [Fp]) {
-        let n = 1 << self.k;
-        assert_eq!(coeffs.len(), n);
-    }
-}
-
-// low degree extention using divide and conquer algorithm
-fn low_degree_extention(coeffs: &mut [Fp], n: usize, depth: usize, caches: &EcFftCache) {
-    if n == 1 {}
-    let cache = caches.get_cache(depth);
-    let (left, right) = coeffs.split_at_mut(n / 2);
-    matrix_arithmetic(left, right, cache.get_inv_factor());
-    join(
-        || low_degree_extention(left, n / 2, depth + 1, caches),
-        || low_degree_extention(right, n / 2, depth + 1, caches),
-    );
-    matrix_arithmetic(left, right, cache.get_factor());
 }

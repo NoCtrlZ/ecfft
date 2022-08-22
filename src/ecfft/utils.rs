@@ -1,6 +1,9 @@
+#[cfg(test)]
 use super::curve::Ep;
 use super::isogeny::Isogeny;
+
 use pairing::bn256::Fq as Fp;
+use rayon::join;
 
 #[derive(Clone, Debug)]
 pub(crate) struct EcFftCache {
@@ -37,15 +40,21 @@ impl EcFftCache {
             let isogeny = Isogeny::new(i);
             let degree_n = 1 << (k - (1 + i));
 
-            s = isogeny.domain_half_sizing(s, degree_n);
-            s_prime = isogeny.domain_half_sizing(s_prime, degree_n);
+            let (new_s, new_s_prime) = join(
+                || isogeny.domain_half_sizing(s, degree_n),
+                || isogeny.domain_half_sizing(s_prime, degree_n),
+            );
+            s = new_s;
+            s_prime = new_s_prime;
 
             let isogeny = Isogeny::new(i + 1);
             let half_defree_n = degree_n / 2;
             let exp = &[(degree_n - 1) as u64, 0, 0, 0];
 
-            let inv_factor = isogeny.get_factor(&s, half_defree_n, exp);
-            let factor = isogeny.get_factor(&s_prime, half_defree_n, exp);
+            let (inv_factor, factor) = join(
+                || isogeny.get_factor(&s, half_defree_n, exp),
+                || isogeny.get_factor(&s_prime, half_defree_n, exp),
+            );
 
             cache.push(FfTree {
                 domain: (s.clone(), s_prime.clone()),
@@ -59,6 +68,14 @@ impl EcFftCache {
 
     pub(crate) fn get_cache(&self, depth: usize) -> &FfTree {
         &self.cache[depth]
+    }
+
+    // evaluate n/2 size of polynomial on n size coset
+    pub(crate) fn extend(&self, coeffs: &mut [Fp]) {
+        let n = 1 << (self.k - 1);
+        assert_eq!(coeffs.len(), n);
+
+        low_degree_extention(coeffs, n, 0, &self)
     }
 }
 
@@ -74,6 +91,22 @@ impl FfTree {
     pub(crate) fn get_inv_factor(&self) -> &Vec<((Fp, Fp), (Fp, Fp))> {
         &self.inv_factor
     }
+}
+
+// low degree extention using divide and conquer algorithm
+fn low_degree_extention(coeffs: &mut [Fp], n: usize, depth: usize, caches: &EcFftCache) {
+    if n == 1 {
+        return;
+    }
+
+    let cache = caches.get_cache(depth);
+    let (left, right) = coeffs.split_at_mut(n / 2);
+    matrix_arithmetic(left, right, cache.get_inv_factor());
+    join(
+        || low_degree_extention(left, n / 2, depth + 1, caches),
+        || low_degree_extention(right, n / 2, depth + 1, caches),
+    );
+    matrix_arithmetic(left, right, cache.get_factor());
 }
 
 pub(crate) fn matrix_arithmetic(
