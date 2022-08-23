@@ -57,11 +57,11 @@ mod tests {
         let poly_a = arb_poly_fq(k - 1);
 
         let ecfft = EcFft::new();
-        let coset = ecfft.get_coset(k as usize - 1);
-        assert_eq!(coset.len(), poly_a.clone().get_values().len());
+        let cache = ecfft.get_cache(k as usize - 1);
+        assert_eq!(cache.coset.len(), poly_a.clone().get_values().len());
 
         // order(n^2) normal evaluation
-        let poly_b = poly_a.clone().to_point_value(coset);
+        let poly_b = poly_a.clone().to_point_value(cache.coset);
 
         // order(nlog^2n) ecfft evaluation
         ecfft.evaluate(poly_a.clone());

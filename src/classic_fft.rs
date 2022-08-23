@@ -31,22 +31,22 @@ impl<G: Group> ClassicFft<G> {
         let n_inv = G::Scalar::from(n).invert().unwrap();
 
         // precompute twiddle factors
-        let twiddle_factors: Vec<_> = (0..half_n as usize)
+        let twiddle_factors = (0..half_n as usize)
             .scan(G::Scalar::one(), |w, _| {
                 let tw = *w;
                 w.group_scale(&multiplicative_generator);
                 Some(tw)
             })
-            .collect();
+            .collect::<Vec<_>>();
 
         // precompute inverse twiddle factors
-        let inv_twiddle_factors: Vec<_> = (0..half_n as usize)
+        let inv_twiddle_factors = (0..half_n as usize)
             .scan(G::Scalar::one(), |w, _| {
                 let tw = *w;
                 w.group_scale(&inv_multiplicative_generator);
                 Some(tw)
             })
-            .collect();
+            .collect::<Vec<_>>();
 
         ClassicFft {
             k,

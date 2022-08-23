@@ -28,12 +28,12 @@ impl EcFft {
         let acc = Ep::generator();
         let presentative = Ep::representative();
         let mut caches = Vec::new();
-        let mut coset: Vec<Fp> = (0..n)
+        let mut coset = (0..n)
             .map(|i| {
                 let coset_point = presentative + acc * Fp::from_raw([i, 0, 0, 0]);
                 coset_point.to_affine().point_projective()
             })
-            .collect();
+            .collect::<Vec<_>>();
 
         for i in 0..max_k {
             let cache = EcFftCache::new(max_k - i, coset.clone());
@@ -93,7 +93,43 @@ impl EcFft {
     }
 
     #[cfg(test)]
-    pub fn get_coset(&self, k: usize) -> Vec<Fp> {
-        self.caches[self.max_k - k].coset.clone()
+    pub(crate) fn get_cache(&self, k: usize) -> EcFftCache {
+        self.caches[self.max_k - k].clone()
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::EcFft;
+
+    #[test]
+    fn test_precomputed_params() {
+        let k = 14;
+        let ecfft = EcFft::new();
+
+        for i in 1..k {
+            let mut n = 1 << (k - i);
+            let cache = ecfft.get_cache(k - i);
+            let coset = cache.get_coset();
+
+            assert_eq!(coset.len(), n);
+
+            for j in 0..(k - i) {
+                let tree = cache.get_tree(j);
+                let (s, s_prime) = tree.get_domain();
+                let factor = tree.get_factor();
+                let inv_factor = tree.get_inv_factor();
+
+                assert_eq!(s.len(), n / 2);
+                assert_eq!(s_prime.len(), n / 2);
+                assert_eq!(factor.len(), n / 4);
+                assert_eq!(inv_factor.len(), n / 4);
+
+                n /= 2;
+            }
+        }
+    }
+
+    #[test]
+    fn test_extend_operation() {}
 }

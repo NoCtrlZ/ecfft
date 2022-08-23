@@ -1,5 +1,3 @@
-#[cfg(test)]
-use super::curve::Ep;
 use super::isogeny::Isogeny;
 
 use pairing::bn256::Fq as Fp;
@@ -8,7 +6,7 @@ use rayon::join;
 #[derive(Clone, Debug)]
 pub(crate) struct EcFftCache {
     pub(crate) k: usize,
-    pub(crate) cache: Vec<FfTree>,
+    pub(crate) trees: Vec<FfTree>,
     pub(crate) coset: Vec<Fp>,
 }
 
@@ -24,7 +22,7 @@ pub(crate) struct FfTree {
 
 impl EcFftCache {
     pub fn new(k: usize, coset: Vec<Fp>) -> Self {
-        let mut cache = Vec::new();
+        let mut trees = Vec::new();
         let mut s = Vec::new();
         let mut s_prime = Vec::new();
 
@@ -56,18 +54,23 @@ impl EcFftCache {
                 || isogeny.get_factor(&s_prime, half_defree_n, exp),
             );
 
-            cache.push(FfTree {
+            trees.push(FfTree {
                 domain: (s.clone(), s_prime.clone()),
                 factor,
                 inv_factor,
             });
         }
 
-        EcFftCache { k, cache, coset }
+        EcFftCache { k, trees, coset }
     }
 
-    pub(crate) fn get_cache(&self, depth: usize) -> &FfTree {
-        &self.cache[depth]
+    pub(crate) fn get_tree(&self, depth: usize) -> &FfTree {
+        &self.trees[depth]
+    }
+
+    #[cfg(test)]
+    pub(crate) fn get_coset(&self) -> &Vec<Fp> {
+        &self.coset
     }
 
     // evaluate n/2 size of polynomial on n size coset
@@ -99,7 +102,7 @@ fn low_degree_extention(coeffs: &mut [Fp], n: usize, depth: usize, caches: &EcFf
         return;
     }
 
-    let cache = caches.get_cache(depth);
+    let cache = caches.get_tree(depth);
     let (left, right) = coeffs.split_at_mut(n / 2);
     matrix_arithmetic(left, right, cache.get_inv_factor());
     join(
@@ -129,7 +132,8 @@ pub(crate) fn matrix_arithmetic(
 
 #[cfg(test)]
 mod tests {
-    use super::{EcFftCache, Ep, Fp, Isogeny};
+    use super::{EcFftCache, Fp, Isogeny};
+    use crate::ecfft::curve::Ep;
 
     #[test]
     fn test_isogeny_and_domain() {
@@ -138,14 +142,14 @@ mod tests {
 
         let acc = Ep::generator();
         let presentative = Ep::representative();
-        let coset: Vec<Fp> = (0..n)
+        let coset = (0..n)
             .map(|i| {
                 let coset_point = presentative + acc * Fp::from_raw([i, 0, 0, 0]);
                 coset_point.to_affine().point_projective()
             })
-            .collect();
+            .collect::<Vec<_>>();
         let ecfft_params = EcFftCache::new(k, coset);
-        let cache = ecfft_params.get_cache(0);
+        let cache = ecfft_params.get_tree(0);
         let (mut s, mut s_prime) = cache.domain.clone();
 
         for i in 1..k {
@@ -165,7 +169,7 @@ mod tests {
             assert_eq!(1 << (k - (i + 1)), s.len());
             assert_eq!(1 << (k - (i + 1)), s_prime.len());
 
-            let cache = ecfft_params.get_cache(i as usize);
+            let cache = ecfft_params.get_tree(i as usize);
             let (mut l, mut l_prime) = cache.domain.clone();
             l.sort();
             l_prime.sort();
