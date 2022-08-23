@@ -114,6 +114,8 @@ pub(crate) fn matrix_arithmetic(
     right: &mut [Fp],
     factor: &Vec<((Fp, Fp), (Fp, Fp))>,
 ) {
+    assert_eq!(left.len(), factor.len());
+    assert_eq!(right.len(), factor.len());
     left.iter_mut()
         .zip(right.iter_mut())
         .zip(factor.iter())

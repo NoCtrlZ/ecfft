@@ -1,69 +1,71 @@
 mod classic_fft;
-mod common;
 mod ecfft;
-mod naive;
+mod polynomial;
 
 pub use crate::ecfft::EcFft;
 pub use classic_fft::ClassicFft;
-pub use common::{point_multiply_fq, point_multiply_fr, polynomial_evaluation};
-pub use naive::{evaluate, naive_multiply_fq, naive_multiply_fr};
+pub use polynomial::{point_multiply_fr, Coefficients, Polynomial};
 
 #[cfg(test)]
 mod tests {
-    use super::{naive_multiply_fr, point_multiply_fr, polynomial_evaluation, ClassicFft, EcFft};
+    use super::{point_multiply_fr, ClassicFft, Coefficients, EcFft, Polynomial};
     use pairing::bn256::{Fq, Fr};
     use pairing::group::ff::Field;
     use proptest::prelude::*;
     use rand_core::OsRng;
 
-    fn arb_poly_fr(k: u32) -> Vec<Fr> {
-        (0..(1 << k)).map(|_| Fr::random(OsRng)).collect::<Vec<_>>()
+    fn arb_poly_fr(k: u32) -> Polynomial<Fr, Coefficients> {
+        Polynomial::<Fr, Coefficients>::new(
+            (0..(1 << k)).map(|_| Fr::random(OsRng)).collect::<Vec<_>>(),
+        )
     }
 
-    fn arb_poly_fq(k: u32) -> Vec<Fq> {
-        (0..(1 << k)).map(|_| Fq::random(OsRng)).collect::<Vec<_>>()
+    fn arb_poly_fq(k: u32) -> Polynomial<Fq, Coefficients> {
+        Polynomial::<Fq, Coefficients>::new(
+            (0..(1 << k)).map(|_| Fq::random(OsRng)).collect::<Vec<_>>(),
+        )
     }
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
         #[test]
         fn classic_fft_poly_multiplication_test(k in 3_u32..10) {
-            let mut poly_a = arb_poly_fr(k-1);
-            let mut poly_b = arb_poly_fr(k-1);
+            let poly_a = arb_poly_fr(k-1);
+            let poly_b = arb_poly_fr(k-1);
+            let mut poly_c = poly_a.clone().get_values();
+            let mut poly_d = poly_b.clone().get_values();
 
             let classic_fft = ClassicFft::new(k);
             // order(n^2) normal multiplication
-            let poly_e = naive_multiply_fr(poly_a.clone(), poly_b.clone());
+            let poly_e = poly_a.clone().naive_multiply(poly_b.clone());
 
             // order(nlogn) classic fft multiplication
-            poly_a.resize(1<<k, Fr::zero());
-            poly_b.resize(1<<k, Fr::zero());
-            classic_fft.dft(&mut poly_a);
-            classic_fft.dft(&mut poly_b);
-            let mut poly_f = point_multiply_fr(poly_a, poly_b);
+            poly_c.resize(1<<k, Fr::zero());
+            poly_d.resize(1<<k, Fr::zero());
+            classic_fft.dft(&mut poly_c);
+            classic_fft.dft(&mut poly_d);
+            let mut poly_f = point_multiply_fr(poly_c, poly_d);
             classic_fft.idft(&mut poly_f);
 
-            assert_eq!(poly_e, poly_f)
+            assert_eq!(poly_e.get_values(), poly_f)
         }
     }
 
     #[test]
     fn ecfft_poly_evaluation_test() {
         let k = 14;
-        let mut poly_a = arb_poly_fq(k - 1);
+        let poly_a = arb_poly_fq(k - 1);
 
-        let ecfft = EcFft::new(k as usize);
-        let coset = ecfft.get_coset(k as usize);
+        let ecfft = EcFft::new();
+        let coset = ecfft.get_coset(k as usize - 1);
+        assert_eq!(coset.len(), poly_a.clone().get_values().len());
 
         // order(n^2) normal evaluation
-        let poly_b = coset
-            .iter()
-            .map(|x| polynomial_evaluation(poly_a.clone(), *x))
-            .collect::<Vec<_>>();
+        let poly_b = poly_a.clone().to_point_value(coset);
 
         // order(nlog^2n) ecfft evaluation
-        ecfft.evaluate(&mut poly_a);
+        ecfft.evaluate(poly_a.clone());
 
-        assert_eq!(poly_a, poly_b)
+        assert_eq!(poly_a.get_values(), poly_b.get_values())
     }
 }
