@@ -19,8 +19,8 @@ impl Basis for PointValue {}
 
 #[derive(Clone, Debug)]
 pub struct Polynomial<F, B> {
-    values: Vec<F>,
-    _marker: PhantomData<B>,
+    pub(crate) values: Vec<F>,
+    pub(crate) _marker: PhantomData<B>,
 }
 
 impl<F: Field, B: Basis> Polynomial<F, B> {
@@ -72,7 +72,7 @@ impl<F: Field, B: Basis> Polynomial<F, B> {
     }
 
     // order(n^2) transform coeffitient to point value representation
-    pub fn to_point_value(self, domain: Vec<F>) -> Polynomial<F, PointValue> {
+    pub fn to_point_value(&self, domain: &Vec<F>) -> Polynomial<F, PointValue> {
         let values = domain
             .iter()
             .map(|x| self.clone().polynomial_evaluation(*x))
@@ -81,6 +81,12 @@ impl<F: Field, B: Basis> Polynomial<F, B> {
             values,
             _marker: PhantomData,
         }
+    }
+}
+
+impl<F: Field, B: Basis> PartialEq for Polynomial<F, B> {
+    fn eq(&self, other: &Self) -> bool {
+        self.values == other.values
     }
 }
 

@@ -51,11 +51,11 @@ mod tests {
         assert_eq!(cache.coset.len(), poly_a.clone().get_values().len());
 
         // order(n^2) normal evaluation
-        let poly_b = poly_a.clone().to_point_value(cache.coset);
+        let poly_b = poly_a.clone().to_point_value(&cache.coset);
 
         // order(nlog^2n) ecfft evaluation
-        ecfft.evaluate(poly_a.clone());
+        let poly_c = ecfft.evaluate(poly_a.clone());
 
-        assert_eq!(poly_a.get_values(), poly_b.get_values())
+        assert_eq!(poly_b, poly_c)
     }
 }

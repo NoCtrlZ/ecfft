@@ -11,7 +11,7 @@ pub(crate) fn arb_poly_fr(k: u32) -> Polynomial<Fr, Coefficients> {
     )
 }
 
-pub(crate) fn arb_poly_fq(k: u32) -> Polynomial<Fq, Coefficients> {
+pub(crate) fn arb_poly_fq(k: usize) -> Polynomial<Fq, Coefficients> {
     Polynomial::<Fq, Coefficients>::new(
         (0..(1 << k)).map(|_| Fq::random(OsRng)).collect::<Vec<_>>(),
     )

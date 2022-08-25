@@ -3,13 +3,14 @@ mod curve;
 mod isogeny;
 mod utils;
 
-use crate::polynomial::{Coefficients, Polynomial};
+use crate::polynomial::{Coefficients, PointValue, Polynomial};
 pub(crate) use curve::Ep;
 use utils::EcFftCache;
 
 use pairing::arithmetic::BaseExt;
 use pairing::bn256::Fq as Fp;
 use rayon::join;
+use std::marker::PhantomData;
 
 // precomputed params for ecfft
 #[derive(Clone, Debug)]
@@ -44,7 +45,7 @@ impl EcFft {
         EcFft { max_k, caches }
     }
 
-    pub fn evaluate(&self, coeffs: Polynomial<Fp, Coefficients>) -> Vec<Fp> {
+    pub fn evaluate(&self, coeffs: Polynomial<Fp, Coefficients>) -> Polynomial<Fp, PointValue> {
         let n = 1 << (self.max_k - 1);
 
         let mut coeffs = coeffs.get_values();
@@ -53,7 +54,10 @@ impl EcFft {
         assert_eq!(coeffs.len(), n);
 
         self.enter(&mut coeffs, &mut coeffs_prime, self.max_k - 1);
-        coeffs_prime
+        Polynomial {
+            values: coeffs_prime,
+            _marker: PhantomData,
+        }
     }
 
     fn enter(&self, coeffs: &mut [Fp], coeffs_prime: &mut [Fp], k: usize) {
@@ -84,7 +88,7 @@ impl EcFft {
                 low_prime[i] + cache.coset[2 * i].pow(&[n as u64 / 2, 0, 0, 0]) * high_prime[i];
         });
 
-        join(|| cache.extend(low_prime), || cache.extend(high_prime));
+        // join(|| cache.extend(low_prime), || cache.extend(high_prime));
 
         (0..(n / 2)).for_each(|i| {
             coeffs[2 * i + 1] =
@@ -129,7 +133,4 @@ mod tests {
             }
         }
     }
-
-    #[test]
-    fn test_extend_operation() {}
 }

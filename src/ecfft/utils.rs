@@ -1,4 +1,5 @@
 use super::isogeny::Isogeny;
+use crate::polynomial::{PointValue, Polynomial};
 
 use pairing::bn256::Fq as Fp;
 use rayon::join;
@@ -74,11 +75,11 @@ impl EcFftCache {
     }
 
     // evaluate n/2 size of polynomial on n size coset
-    pub(crate) fn extend(&self, coeffs: &mut [Fp]) {
+    pub(crate) fn extend(&self, poly: &mut Polynomial<Fp, PointValue>) {
         let n = 1 << (self.k - 1);
-        assert_eq!(coeffs.len(), n);
+        assert_eq!(poly.values.len(), n);
 
-        low_degree_extention(coeffs, n, 0, &self)
+        low_degree_extention(&mut poly.values, n, 0, &self)
     }
 }
 
@@ -133,7 +134,7 @@ pub(crate) fn matrix_arithmetic(
 #[cfg(test)]
 mod tests {
     use super::{EcFftCache, Isogeny};
-    use crate::test::layer_coset;
+    use crate::test::{arb_poly_fq, layer_coset};
 
     #[test]
     fn test_isogeny_and_domain() {
@@ -183,5 +184,32 @@ mod tests {
         }
         assert_eq!(s.len(), 1);
         assert_eq!(s_prime.len(), 1);
+    }
+
+    #[test]
+    fn test_extend_operation() {
+        let k = 1;
+        let n = 1 << k;
+        let depth = 14 - k;
+        let coset = layer_coset(depth);
+        let cache = EcFftCache::new(k, coset.clone());
+        let tree = cache.get_tree(0);
+        let (s, s_prime) = tree.get_domain();
+        let factor = tree.get_factor();
+        let inv_factor = tree.get_inv_factor();
+
+        let coeff_a = arb_poly_fq(k - 1);
+        let mut coeff_a_on_s = coeff_a.to_point_value(s);
+        cache.extend(&mut coeff_a_on_s);
+        let point_value_a_on_s_prime = coeff_a.to_point_value(s_prime);
+
+        assert_eq!(coeff_a.values.len(), n / 2);
+        assert_eq!(coset.len(), n);
+        assert_eq!(cache.trees.len(), k);
+        assert_eq!(s.len(), n / 2);
+        assert_eq!(s_prime.len(), n / 2);
+        assert_eq!(factor.len(), n / 4);
+        assert_eq!(inv_factor.len(), n / 4);
+        assert_eq!(coeff_a_on_s, point_value_a_on_s_prime);
     }
 }
