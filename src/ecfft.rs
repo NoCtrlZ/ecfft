@@ -4,7 +4,7 @@ mod isogeny;
 mod utils;
 
 use crate::polynomial::{Coefficients, Polynomial};
-use curve::Ep;
+pub(crate) use curve::Ep;
 use utils::EcFftCache;
 
 use pairing::arithmetic::BaseExt;
@@ -120,12 +120,12 @@ mod tests {
                 let factor = tree.get_factor();
                 let inv_factor = tree.get_inv_factor();
 
-                assert_eq!(s.len(), n / 2);
-                assert_eq!(s_prime.len(), n / 2);
-                assert_eq!(factor.len(), n / 4);
-                assert_eq!(inv_factor.len(), n / 4);
-
                 n /= 2;
+
+                assert_eq!(s.len(), n);
+                assert_eq!(s_prime.len(), n);
+                assert_eq!(factor.len(), n / 2);
+                assert_eq!(inv_factor.len(), n / 2);
             }
         }
     }

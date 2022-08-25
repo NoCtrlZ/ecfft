@@ -132,22 +132,14 @@ pub(crate) fn matrix_arithmetic(
 
 #[cfg(test)]
 mod tests {
-    use super::{EcFftCache, Fp, Isogeny};
-    use crate::ecfft::curve::Ep;
+    use super::{EcFftCache, Isogeny};
+    use crate::test::layer_coset;
 
     #[test]
     fn test_isogeny_and_domain() {
         let k = 14;
-        let n = 1 << k;
 
-        let acc = Ep::generator();
-        let presentative = Ep::representative();
-        let coset = (0..n)
-            .map(|i| {
-                let coset_point = presentative + acc * Fp::from_raw([i, 0, 0, 0]);
-                coset_point.to_affine().point_projective()
-            })
-            .collect::<Vec<_>>();
+        let coset = layer_coset(0);
         let ecfft_params = EcFftCache::new(k, coset);
         let cache = ecfft_params.get_tree(0);
         let (mut s, mut s_prime) = cache.domain.clone();

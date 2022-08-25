@@ -1,30 +1,20 @@
+#[cfg(test)]
+mod test;
+
 mod classic_fft;
 mod ecfft;
 mod polynomial;
 
 pub use crate::ecfft::EcFft;
 pub use classic_fft::ClassicFft;
-pub use polynomial::{point_multiply_fr, Coefficients, Polynomial};
+pub use polynomial::point_multiply_fr;
 
 #[cfg(test)]
 mod tests {
-    use super::{point_multiply_fr, ClassicFft, Coefficients, EcFft, Polynomial};
-    use pairing::bn256::{Fq, Fr};
-    use pairing::group::ff::Field;
+    use super::{point_multiply_fr, ClassicFft, EcFft};
+    use crate::test::{arb_poly_fq, arb_poly_fr};
+    use pairing::bn256::Fr;
     use proptest::prelude::*;
-    use rand_core::OsRng;
-
-    fn arb_poly_fr(k: u32) -> Polynomial<Fr, Coefficients> {
-        Polynomial::<Fr, Coefficients>::new(
-            (0..(1 << k)).map(|_| Fr::random(OsRng)).collect::<Vec<_>>(),
-        )
-    }
-
-    fn arb_poly_fq(k: u32) -> Polynomial<Fq, Coefficients> {
-        Polynomial::<Fq, Coefficients>::new(
-            (0..(1 << k)).map(|_| Fq::random(OsRng)).collect::<Vec<_>>(),
-        )
-    }
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(100))]
