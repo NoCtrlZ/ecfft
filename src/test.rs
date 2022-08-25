@@ -25,6 +25,7 @@ pub(crate) fn layer_coset(depth: usize) -> Vec<Fq> {
     let presentative = Ep::representative();
 
     (0..n)
+        .into_iter()
         .step_by(step)
         .map(|i| {
             let coset_point = presentative + acc * Fq::from_raw([i, 0, 0, 0]);
