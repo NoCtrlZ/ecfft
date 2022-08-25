@@ -40,11 +40,11 @@ impl EcFftCache {
                 *c = a[1];
             });
 
-        for i in 0..k {
+        for i in 1..k {
             let isogeny = Isogeny::new(i);
-            let n = 1 << (k - (i + 1));
+            let n = 1 << (k - i);
             let half_n = n / 2;
-            let exp = &[(n - 1) as u64, 0, 0, 0];
+            let exp = &[(half_n - 1) as u64, 0, 0, 0];
 
             let (inv_factor, factor) = join(
                 || isogeny.get_factor(&s, half_n, exp),
@@ -57,16 +57,6 @@ impl EcFftCache {
                 inv_factor,
             });
 
-            s[..half_n]
-                .iter()
-                .zip(&s[half_n..])
-                .zip(&s_prime[..half_n])
-                .zip(&s_prime[half_n..])
-                .for_each(|(((a, b), c), d)| {
-                    assert_eq!(isogeny.evaluate(*a), isogeny.evaluate(*b));
-                    assert_eq!(isogeny.evaluate(*c), isogeny.evaluate(*d));
-                });
-
             let (new_s, new_s_prime) = join(
                 || isogeny.domain_half_sizing(s, half_n),
                 || isogeny.domain_half_sizing(s_prime, half_n),
@@ -74,6 +64,8 @@ impl EcFftCache {
             s = new_s;
             s_prime = new_s_prime;
         }
+
+        trees.push(FfTree::last_tree(s, s_prime));
 
         EcFftCache { k, trees, coset }
     }
@@ -108,14 +100,12 @@ impl FfTree {
     pub(crate) fn get_inv_factor(&self) -> &Vec<((Fp, Fp), (Fp, Fp))> {
         &self.inv_factor
     }
-}
 
-impl Default for FfTree {
-    fn default() -> Self {
+    fn last_tree(s: Vec<Fp>, s_prime: Vec<Fp>) -> Self {
         FfTree {
-            domain: (vec![Fp::one()], vec![Fp::one()]),
-            factor: vec![((Fp::one(), Fp::one()), (Fp::one(), Fp::one()))],
-            inv_factor: vec![((Fp::one(), Fp::one()), (Fp::one(), Fp::one()))],
+            domain: (s, s_prime),
+            factor: vec![],
+            inv_factor: vec![],
         }
     }
 }
@@ -173,7 +163,7 @@ mod tests {
             for i in 0..(k - 1) {
                 let n = 1 << (k - (i + 1));
                 let half_n = n / 2;
-                let isogeny = Isogeny::new(i);
+                let isogeny = Isogeny::new(i + 1);
 
                 s = s.iter().map(|coeff| isogeny.evaluate(*coeff)).collect();
                 s_prime = s_prime
@@ -223,13 +213,12 @@ mod tests {
             let cache = EcFftCache::new(k, coset.clone());
             let tree = cache.get_tree(0);
             let (s, s_prime) = tree.get_domain();
-            let factor = tree.get_factor();
-            let inv_factor = tree.get_inv_factor();
 
             let coeff_a = arb_poly_fq(k - 1);
             let mut coeff_a_on_s = coeff_a.to_point_value(s);
             cache.extend(&mut coeff_a_on_s);
             let point_value_a_on_s_prime = coeff_a.to_point_value(s_prime);
+            let (factor, inv_factor) = (tree.get_factor(), tree.get_inv_factor());
 
             assert_eq!(coeff_a.values.len(), n / 2);
             assert_eq!(coset.len(), n);

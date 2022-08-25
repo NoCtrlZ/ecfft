@@ -12,7 +12,7 @@ pub(crate) struct Isogeny {
 impl Isogeny {
     pub(crate) fn new(depth: usize) -> Isogeny {
         match depth {
-            0 => Isogeny {
+            1 => Isogeny {
                 a: Fp::from_raw([
                     0x3c8628054523a5de,
                     0x4f8961d14bb560d0,
@@ -26,7 +26,7 @@ impl Isogeny {
                     0xed8b578b83e9a51,
                 ]),
             },
-            1 => Isogeny {
+            2 => Isogeny {
                 a: Fp::from_raw([
                     0x509a7c8c05b12426,
                     0x44dbeb15610c8b88,
@@ -40,7 +40,7 @@ impl Isogeny {
                     0x1803646703251b2d,
                 ]),
             },
-            2 => Isogeny {
+            3 => Isogeny {
                 a: Fp::from_raw([
                     0x58f935a65574871b,
                     0xf3d49205b05b2ed4,
@@ -54,7 +54,7 @@ impl Isogeny {
                     0x413428325e24475,
                 ]),
             },
-            3 => Isogeny {
+            4 => Isogeny {
                 a: Fp::from_raw([
                     0xb05094c95e744772,
                     0xf0ecc3530f2e17e8,
@@ -68,7 +68,7 @@ impl Isogeny {
                     0x14ffe0243def0f38,
                 ]),
             },
-            4 => Isogeny {
+            5 => Isogeny {
                 a: Fp::from_raw([
                     0x920f7d17bced4fb0,
                     0x97bb25809e425c77,
@@ -82,7 +82,7 @@ impl Isogeny {
                     0x289ef4b2b9d1a3c,
                 ]),
             },
-            5 => Isogeny {
+            6 => Isogeny {
                 a: Fp::from_raw([
                     0x4956ddc125ab2146,
                     0xee64baaceb258de9,
@@ -96,7 +96,7 @@ impl Isogeny {
                     0x1ff2c2e57beeee74,
                 ]),
             },
-            6 => Isogeny {
+            7 => Isogeny {
                 a: Fp::from_raw([
                     0x2f43ac9fe243ac9c,
                     0x2f705e4a79778aeb,
@@ -110,7 +110,7 @@ impl Isogeny {
                     0x82016dc54ad1089,
                 ]),
             },
-            7 => Isogeny {
+            8 => Isogeny {
                 a: Fp::from_raw([
                     0x2d78b1d7db38b64c,
                     0xabf84e66418548a6,
@@ -124,7 +124,7 @@ impl Isogeny {
                     0x20e27b8f30dca275,
                 ]),
             },
-            8 => Isogeny {
+            9 => Isogeny {
                 a: Fp::from_raw([
                     0xff28b6eec4aba31c,
                     0x092c3726b84955c3,
@@ -138,7 +138,7 @@ impl Isogeny {
                     0x1f7e1925fea5d3eb,
                 ]),
             },
-            9 => Isogeny {
+            10 => Isogeny {
                 a: Fp::from_raw([
                     0xaef32e649db66f35,
                     0x41c11d598e831c7f,
@@ -152,7 +152,7 @@ impl Isogeny {
                     0x1a584f644d1dd18e,
                 ]),
             },
-            10 => Isogeny {
+            11 => Isogeny {
                 a: Fp::from_raw([
                     0x37b437c40acce92b,
                     0x23c84919bd9aa532,
@@ -166,7 +166,7 @@ impl Isogeny {
                     0x22ab510a7c808345,
                 ]),
             },
-            11 => Isogeny {
+            12 => Isogeny {
                 a: Fp::from_raw([
                     0x46f082fcbe612e24,
                     0xea884e4741cfbb13,
@@ -180,7 +180,7 @@ impl Isogeny {
                     0x20df5b2c0579f1d2,
                 ]),
             },
-            12 => Isogeny {
+            13 => Isogeny {
                 a: Fp::from_raw([
                     0xbc0bcabefcf1af9c,
                     0x7ba5bdbe4ee0676b,
