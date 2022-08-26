@@ -1,4 +1,3 @@
-use pairing::bn256::Fr;
 use pairing::group::ff::Field;
 
 use std::fmt::Debug;
@@ -89,11 +88,6 @@ impl<F: Field, B: Basis> PartialEq for Polynomial<F, B> {
     fn eq(&self, other: &Self) -> bool {
         self.values == other.values
     }
-}
-
-// order(n) polynomials points multiplication
-pub fn point_multiply_fr(a: Vec<Fr>, b: Vec<Fr>) -> Vec<Fr> {
-    a.iter().zip(b.iter()).map(|(a, b)| a * b).collect()
 }
 
 #[cfg(test)]

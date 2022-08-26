@@ -7,12 +7,12 @@ mod polynomial;
 
 pub use crate::ecfft::EcFft;
 pub use classic_fft::ClassicFft;
+pub use polynomial::{Coefficients, Polynomial};
 
 #[cfg(test)]
 mod tests {
     use super::{ClassicFft, EcFft};
-    use crate::polynomial::point_multiply_fr;
-    use crate::test::{arb_poly_fq, arb_poly_fr};
+    use crate::test::{arb_poly_fq, arb_poly_fr, point_multiply_fr};
     use pairing::bn256::Fr;
     use proptest::prelude::*;
 

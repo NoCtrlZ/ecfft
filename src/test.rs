@@ -33,3 +33,8 @@ pub(crate) fn layer_coset(depth: usize) -> Vec<Fq> {
         })
         .collect::<Vec<_>>()
 }
+
+// order(n) polynomials points multiplication
+pub fn point_multiply_fr(a: Vec<Fr>, b: Vec<Fr>) -> Vec<Fr> {
+    a.iter().zip(b.iter()).map(|(a, b)| a * b).collect()
+}
