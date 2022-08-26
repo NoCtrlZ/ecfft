@@ -88,7 +88,7 @@ impl EcFft {
                 low_prime[i] + cache.coset[2 * i].pow(&[n as u64 / 2, 0, 0, 0]) * high_prime[i];
         });
 
-        // join(|| cache.extend(low_prime), || cache.extend(high_prime));
+        join(|| cache.extend(low_prime), || cache.extend(high_prime));
 
         (0..(n / 2)).for_each(|i| {
             coeffs[2 * i + 1] =

@@ -238,4 +238,25 @@ impl Isogeny {
             })
             .collect()
     }
+
+    pub(crate) fn get_inv_factor(
+        &self,
+        domain: &Vec<Fp>,
+        size: usize,
+        exp: &[u64; 4],
+    ) -> Vec<((Fp, Fp), (Fp, Fp))> {
+        domain[..size]
+            .par_iter()
+            .zip(&domain[size..])
+            .map(|(a, b)| {
+                let f1 = self.evaluate_with_denominator(*a).pow(exp);
+                let f2 = a * f1;
+                let f3 = self.evaluate_with_denominator(*b).pow(exp);
+                let f4 = b * f3;
+                let denominator = f1 * f4 - f2 * f3;
+                let divisor = denominator.invert().unwrap();
+                ((f4 * divisor, -f2 * divisor), (-f3 * divisor, f1 * divisor))
+            })
+            .collect()
+    }
 }

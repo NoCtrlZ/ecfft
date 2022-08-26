@@ -1,4 +1,4 @@
-use pairing::bn256::{Fq, Fr};
+use pairing::bn256::Fr;
 use pairing::group::ff::Field;
 
 use std::fmt::Debug;
@@ -73,6 +73,7 @@ impl<F: Field, B: Basis> Polynomial<F, B> {
 
     // order(n^2) transform coeffitient to point value representation
     pub fn to_point_value(&self, domain: &Vec<F>) -> Polynomial<F, PointValue> {
+        assert_eq!(self.values.len(), domain.len());
         let values = domain
             .iter()
             .map(|x| self.clone().polynomial_evaluation(*x))
@@ -97,13 +98,14 @@ pub fn point_multiply_fr(a: Vec<Fr>, b: Vec<Fr>) -> Vec<Fr> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Coefficients, Fq, Polynomial};
+    use super::{Coefficients, Polynomial};
     use pairing::arithmetic::BaseExt;
+    use pairing::bn256::Fq;
     use pairing::group::ff::Field;
     use proptest::{collection::vec, prelude::*};
     use rand_core::OsRng;
 
-    fn arb_poly_fq(k: u32) -> Polynomial<Fq, Coefficients> {
+    fn arb_poly(k: u32) -> Polynomial<Fq, Coefficients> {
         Polynomial::<Fq, Coefficients>::new(
             (0..(1 << k)).map(|_| Fq::random(OsRng)).collect::<Vec<_>>(),
         )
@@ -123,7 +125,7 @@ mod tests {
         fn test_polynomial_evaluation(point in arb_point(),k in 1u32..20) {
             let mut eval = Fq::zero();
             let mut exp = Fq::one();
-            let poly_a = arb_poly_fq(k);
+            let poly_a = arb_poly(k);
 
             poly_a.clone().get_values().iter().for_each(|coeff| {
                 eval += coeff * exp;

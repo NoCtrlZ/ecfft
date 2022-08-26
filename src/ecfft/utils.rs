@@ -1,5 +1,4 @@
 use super::isogeny::Isogeny;
-use crate::polynomial::{PointValue, Polynomial};
 
 use pairing::bn256::Fq as Fp;
 use rayon::join;
@@ -47,7 +46,7 @@ impl EcFftCache {
             let exp = &[(half_n - 1) as u64, 0, 0, 0];
 
             let (inv_factor, factor) = join(
-                || isogeny.get_factor(&s, half_n, exp),
+                || isogeny.get_inv_factor(&s, half_n, exp),
                 || isogeny.get_factor(&s_prime, half_n, exp),
             );
 
@@ -80,11 +79,11 @@ impl EcFftCache {
     }
 
     // evaluate n/2 size of polynomial on n size coset
-    pub(crate) fn extend(&self, poly: &mut Polynomial<Fp, PointValue>) {
+    pub(crate) fn extend(&self, poly: &mut [Fp]) {
         let n = 1 << (self.k - 1);
-        assert_eq!(poly.values.len(), n);
+        assert_eq!(poly.len(), n);
 
-        low_degree_extention(&mut poly.values, n, 0, &self)
+        low_degree_extention(poly, n, 0, &self)
     }
 }
 
@@ -148,6 +147,7 @@ pub(crate) fn matrix_arithmetic(
 mod tests {
     use super::{EcFftCache, Isogeny};
     use crate::test::{arb_poly_fq, layer_coset};
+    use proptest::prelude::*;
 
     #[test]
     fn test_isogeny_and_domain() {
@@ -203,31 +203,21 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_extend_operation() {
-        let max_k = 3;
-        for k in 1..max_k {
-            let n = 1 << k;
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+        #[test]
+        fn test_extend_operation(k in 1usize..10) {
             let depth = 14 - k;
+            let poly_a = arb_poly_fq(k - 1);
             let coset = layer_coset(depth);
-            let cache = EcFftCache::new(k, coset.clone());
-            let tree = cache.get_tree(0);
-            let (s, s_prime) = tree.get_domain();
+            let ecfft_params = EcFftCache::new(k, coset);
+            let cache = ecfft_params.get_tree(0);
+            let (s, s_prime) = cache.domain.clone();
+            let mut evals_s = poly_a.to_point_value(&s);
+            let evals_s_prime = poly_a.to_point_value(&s_prime);
+            ecfft_params.extend(&mut evals_s.values);
 
-            let coeff_a = arb_poly_fq(k - 1);
-            let mut coeff_a_on_s = coeff_a.to_point_value(s);
-            cache.extend(&mut coeff_a_on_s);
-            let point_value_a_on_s_prime = coeff_a.to_point_value(s_prime);
-            let (factor, inv_factor) = (tree.get_factor(), tree.get_inv_factor());
-
-            assert_eq!(coeff_a.values.len(), n / 2);
-            assert_eq!(coset.len(), n);
-            assert_eq!(cache.trees.len(), k);
-            assert_eq!(s.len(), n / 2);
-            assert_eq!(s_prime.len(), n / 2);
-            assert_eq!(factor.len(), n / 4);
-            assert_eq!(inv_factor.len(), n / 4);
-            assert_eq!(coeff_a_on_s, point_value_a_on_s_prime);
+            assert_eq!(evals_s, evals_s_prime)
         }
     }
 }
