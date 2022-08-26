@@ -55,7 +55,7 @@ impl EcFft {
 
         self.enter(&mut coeffs, &mut coeffs_prime, self.max_k - 1);
         Polynomial {
-            values: coeffs_prime,
+            values: coeffs,
             _marker: PhantomData,
         }
     }
@@ -80,8 +80,6 @@ impl EcFft {
         high_prime.copy_from_slice(high);
 
         let cache = &self.caches[self.max_k - k];
-
-        assert_eq!(n, cache.coset.len());
 
         (0..(n / 2)).for_each(|i| {
             coeffs[2 * i] =

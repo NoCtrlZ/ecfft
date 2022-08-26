@@ -88,6 +88,7 @@ impl EcFftCache {
 }
 
 impl FfTree {
+    #[cfg(test)]
     pub(crate) fn get_domain(&self) -> &(Vec<Fp>, Vec<Fp>) {
         &self.domain
     }
