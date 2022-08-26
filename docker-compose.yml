@@ -1,0 +1,9 @@
+version: '3'
+services:
+    curve:
+      build: curve
+      container_name: curve
+      tty: true
+      stdin_open: true
+      volumes:
+        - ./curve:/app
