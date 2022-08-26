@@ -45,17 +45,18 @@ impl EcFft {
         EcFft { max_k, caches }
     }
 
-    pub fn evaluate(&self, coeffs: Polynomial<Fp, Coefficients>) -> Polynomial<Fp, PointValue> {
-        let n = 1 << (self.max_k - 1);
+    pub fn evaluate(
+        &self,
+        k: usize,
+        mut coeffs: Polynomial<Fp, Coefficients>,
+    ) -> Polynomial<Fp, PointValue> {
+        assert!(k <= self.max_k);
 
-        let mut coeffs = coeffs.get_values();
-        let mut coeffs_prime = coeffs.clone();
+        let mut coeffs_prime = coeffs.values.clone();
 
-        assert_eq!(coeffs.len(), n);
-
-        self.enter(&mut coeffs, &mut coeffs_prime, self.max_k - 1);
+        self.enter(&mut coeffs.values, &mut coeffs_prime, k);
         Polynomial {
-            values: coeffs,
+            values: coeffs.values,
             _marker: PhantomData,
         }
     }

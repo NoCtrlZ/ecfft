@@ -7,11 +7,11 @@ mod polynomial;
 
 pub use crate::ecfft::EcFft;
 pub use classic_fft::ClassicFft;
-pub use polynomial::point_multiply_fr;
 
 #[cfg(test)]
 mod tests {
-    use super::{point_multiply_fr, ClassicFft, EcFft};
+    use super::{ClassicFft, EcFft};
+    use crate::polynomial::point_multiply_fr;
     use crate::test::{arb_poly_fq, arb_poly_fr};
     use pairing::bn256::Fr;
     use proptest::prelude::*;
@@ -43,19 +43,20 @@ mod tests {
 
     #[test]
     fn ecfft_poly_evaluation_test() {
-        let k = 14;
-        let poly_a = arb_poly_fq(k - 1);
-
         let ecfft = EcFft::new();
-        let cache = ecfft.get_cache(k as usize - 1);
-        assert_eq!(cache.coset.len(), poly_a.clone().get_values().len());
+        let max_k = 14;
+        for k in 1..max_k {
+            let poly_a = arb_poly_fq(k);
+            let cache = ecfft.get_cache(k);
+            assert_eq!(cache.coset.len(), poly_a.values.len());
 
-        // order(n^2) normal evaluation
-        let poly_b = poly_a.clone().to_point_value(&cache.coset);
+            // order(n^2) normal evaluation
+            let poly_b = poly_a.clone().to_point_value(&cache.coset);
 
-        // order(nlog^2n) ecfft evaluation
-        let poly_c = ecfft.evaluate(poly_a.clone());
+            // order(nlog^2n) ecfft evaluation
+            let poly_c = ecfft.evaluate(k, poly_a.clone());
 
-        assert_eq!(poly_b, poly_c)
+            assert_eq!(poly_b, poly_c)
+        }
     }
 }
