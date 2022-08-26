@@ -53,7 +53,11 @@ $$
 y^2 = x^3 + x + 5612291247948481584627780310922020304781354847659642188369727566000581075360
 $$
 
-You can find curve, subgroup and isogenies with [utils](https://github.com/ashWhiteHat/ecfft_utils).
+Executing following command getting sub group generator and isogenies.
+
+```shell
+$ docker-compose up
+```
 
 ## Todo
 
