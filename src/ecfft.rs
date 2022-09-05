@@ -7,7 +7,6 @@ use crate::polynomial::{Coefficients, PointValue, Polynomial};
 pub(crate) use curve::Ep;
 use utils::EcFftCache;
 
-use pairing::arithmetic::BaseExt;
 use pairing::bn256::Fq as Fp;
 use rayon::join;
 use std::marker::PhantomData;
@@ -83,15 +82,13 @@ impl EcFft {
         let cache = &self.caches[self.max_k - k];
 
         (0..(n / 2)).for_each(|i| {
-            coeffs[2 * i] =
-                low_prime[i] + cache.coset[2 * i].pow(&[n as u64 / 2, 0, 0, 0]) * high_prime[i];
+            coeffs[2 * i] = low_prime[i] + cache.powered_coset[2 * i] * high_prime[i];
         });
 
         join(|| cache.extend(low_prime), || cache.extend(high_prime));
 
         (0..(n / 2)).for_each(|i| {
-            coeffs[2 * i + 1] =
-                low_prime[i] + cache.coset[2 * i + 1].pow(&[n as u64 / 2, 0, 0, 0]) * high_prime[i];
+            coeffs[2 * i + 1] = low_prime[i] + cache.powered_coset[2 * i + 1] * high_prime[i];
         });
     }
 

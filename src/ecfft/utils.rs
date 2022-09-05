@@ -1,6 +1,6 @@
 use super::isogeny::Isogeny;
 
-use pairing::bn256::Fq as Fp;
+use pairing::{arithmetic::BaseExt, bn256::Fq as Fp};
 use rayon::join;
 
 #[derive(Clone, Debug)]
@@ -8,6 +8,7 @@ pub(crate) struct EcFftCache {
     pub(crate) k: usize,
     pub(crate) trees: Vec<FfTree>,
     pub(crate) coset: Vec<Fp>,
+    pub(crate) powered_coset: Vec<Fp>,
 }
 
 #[derive(Clone, Debug)]
@@ -23,12 +24,15 @@ pub(crate) struct FfTree {
 impl EcFftCache {
     pub fn new(k: usize, coset: Vec<Fp>) -> Self {
         let max_k = 14;
+        let n = 1 << k;
+
         assert!(k <= max_k);
         assert_eq!(coset.len(), 1 << k);
 
         let mut trees = Vec::new();
         let mut s = vec![Fp::zero(); 1 << (k - 1)];
         let mut s_prime = vec![Fp::zero(); 1 << (k - 1)];
+        let mut powered_coset = Vec::new();
 
         coset
             .chunks(2)
@@ -37,6 +41,8 @@ impl EcFftCache {
             .for_each(|((a, b), c)| {
                 *b = a[0];
                 *c = a[1];
+                powered_coset.push(a[0].pow(&[n / 2, 0, 0, 0]));
+                powered_coset.push(a[1].pow(&[n / 2, 0, 0, 0]));
             });
 
         for i in 1..k {
@@ -66,7 +72,12 @@ impl EcFftCache {
 
         trees.push(FfTree::last_tree(s, s_prime));
 
-        EcFftCache { k, trees, coset }
+        EcFftCache {
+            k,
+            trees,
+            coset,
+            powered_coset,
+        }
     }
 
     pub(crate) fn get_tree(&self, depth: usize) -> &FfTree {
