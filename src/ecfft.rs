@@ -81,15 +81,24 @@ impl EcFft {
 
         let cache = &self.caches[self.max_k - k];
 
-        (0..(n / 2)).for_each(|i| {
-            coeffs[2 * i] = low_prime[i] + cache.powered_coset[2 * i] * high_prime[i];
-        });
+        coeffs
+            .iter_mut()
+            .step_by(2)
+            .zip(cache.powered_coset.iter().step_by(2))
+            .zip(low_prime.iter())
+            .zip(high_prime.iter())
+            .for_each(|(((a, b), c), d)| *a = c + b * d);
 
         join(|| cache.extend(low_prime), || cache.extend(high_prime));
 
-        (0..(n / 2)).for_each(|i| {
-            coeffs[2 * i + 1] = low_prime[i] + cache.powered_coset[2 * i + 1] * high_prime[i];
-        });
+        coeffs
+            .iter_mut()
+            .skip(1)
+            .step_by(2)
+            .zip(cache.powered_coset.iter().skip(1).step_by(2))
+            .zip(low_prime.iter())
+            .zip(high_prime.iter())
+            .for_each(|(((a, b), c), d)| *a = c + b * d);
     }
 
     #[cfg(test)]
