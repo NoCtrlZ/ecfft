@@ -90,11 +90,10 @@ impl EcFftCache {
     }
 
     // evaluate n/2 size of polynomial on n size coset
-    pub(crate) fn extend(&self, poly: &mut [Fp]) {
+    pub(crate) fn extend(&self, poly: &mut [Fp], poly_prime: &mut [Fp]) {
         let n = 1 << (self.k - 1);
-        assert_eq!(poly.len(), n);
 
-        low_degree_extention(poly, n, 0, &self)
+        low_degree_extention(poly, poly_prime, n, 0, &self);
     }
 }
 
@@ -122,36 +121,48 @@ impl FfTree {
 }
 
 // low degree extention using divide and conquer algorithm
-fn low_degree_extention(coeffs: &mut [Fp], n: usize, depth: usize, caches: &EcFftCache) {
+fn low_degree_extention(
+    coeffs: &mut [Fp],
+    coeffs_prime: &mut [Fp],
+    n: usize,
+    depth: usize,
+    caches: &EcFftCache,
+) {
     if n == 1 {
         return;
     }
 
     let cache = caches.get_tree(depth);
     let (left, right) = coeffs.split_at_mut(n / 2);
-    matrix_arithmetic(left, right, cache.get_inv_factor());
+    let (left_prime, right_prime) = coeffs_prime.split_at_mut(n / 2);
+    matrix_arithmetic(left, right, left_prime, right_prime, cache.get_inv_factor());
     join(
-        || low_degree_extention(left, n / 2, depth + 1, caches),
-        || low_degree_extention(right, n / 2, depth + 1, caches),
+        || low_degree_extention(left, left_prime, n / 2, depth + 1, caches),
+        || low_degree_extention(right, right_prime, n / 2, depth + 1, caches),
     );
-    matrix_arithmetic(left, right, cache.get_factor());
+    matrix_arithmetic(left, right, left_prime, right_prime, cache.get_factor());
 }
 
 pub(crate) fn matrix_arithmetic(
     left: &mut [Fp],
     right: &mut [Fp],
+    left_prime: &mut [Fp],
+    right_prime: &mut [Fp],
     factor: &Vec<((Fp, Fp), (Fp, Fp))>,
 ) {
-    assert_eq!(left.len(), factor.len());
-    assert_eq!(right.len(), factor.len());
     left.iter_mut()
         .zip(right.iter_mut())
+        .zip(left_prime.iter_mut())
+        .zip(right_prime.iter_mut())
         .zip(factor.iter())
-        .for_each(|((a, b), c)| {
-            let ((f0, f1), (f2, f3)) = c;
+        .for_each(|((((a, b), c), d), e)| {
+            let ((f0, f1), (f2, f3)) = e;
             let (x, y) = (f0 * *a + f1 * *b, f2 * *a + f3 * *b);
             *a = x;
             *b = y;
+            let (x, y) = (f0 * *c + f1 * *d, f2 * *c + f3 * *d);
+            *c = x;
+            *d = y;
         })
 }
 
@@ -221,15 +232,19 @@ mod tests {
         fn test_extend_operation(k in 1usize..10) {
             let depth = 14 - k;
             let poly_a = arb_poly_fq(k - 1);
+            let poly_b = arb_poly_fq(k - 1);
             let coset = layer_coset(depth);
             let ecfft_params = EcFftCache::new(k, coset);
             let cache = ecfft_params.get_tree(0);
             let (s, s_prime) = cache.domain.clone();
             let mut evals_s = poly_a.to_point_value(&s);
             let evals_s_prime = poly_a.to_point_value(&s_prime);
-            ecfft_params.extend(&mut evals_s.values);
+            let mut evals_s_alt = poly_b.to_point_value(&s);
+            let evals_s_prime_alt = poly_b.to_point_value(&s_prime);
+            ecfft_params.extend(&mut evals_s.values, &mut evals_s_alt.values);
 
-            assert_eq!(evals_s, evals_s_prime)
+            assert_eq!(evals_s, evals_s_prime);
+            assert_eq!(evals_s_alt, evals_s_prime_alt);
         }
     }
 }

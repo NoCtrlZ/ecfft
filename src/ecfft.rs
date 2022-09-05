@@ -62,7 +62,6 @@ impl EcFft {
 
     fn enter(&self, coeffs: &mut [Fp], coeffs_prime: &mut [Fp], k: usize) {
         let n = 1 << k;
-        assert_eq!(coeffs.len(), n);
 
         if n == 1 {
             return;
@@ -89,7 +88,7 @@ impl EcFft {
             .zip(high_prime.iter())
             .for_each(|(((a, b), c), d)| *a = c + b * d);
 
-        join(|| cache.extend(low_prime), || cache.extend(high_prime));
+        cache.extend(low_prime, high_prime);
 
         coeffs
             .iter_mut()
