@@ -5,10 +5,10 @@ mod utils;
 
 use crate::polynomial::{Coefficients, PointValue, Polynomial};
 pub(crate) use curve::Ep;
-use utils::EcFftCache;
+use utils::{low_degree_extention, poly_inversion, EcFftCache};
 
 use pairing::bn256::Fq as Fp;
-use rayon::join;
+use rayon::{current_num_threads, join};
 use std::marker::PhantomData;
 
 // precomputed params for ecfft
@@ -53,26 +53,32 @@ impl EcFft {
 
         let mut coeffs_prime = coeffs.values.clone();
 
-        self.enter(&mut coeffs.values, &mut coeffs_prime, k);
+        self.enter(
+            &mut coeffs.values,
+            &mut coeffs_prime,
+            k,
+            1 << current_num_threads(),
+        );
         Polynomial {
             values: coeffs.values,
             _marker: PhantomData,
         }
     }
 
-    fn enter(&self, coeffs: &mut [Fp], coeffs_prime: &mut [Fp], k: usize) {
+    fn enter(&self, coeffs: &mut [Fp], coeffs_prime: &mut [Fp], k: usize, thread_log: usize) {
         let n = 1 << k;
+        let half_n = n / 2;
 
         if n == 1 {
             return;
         }
 
-        let (low, high) = coeffs.split_at_mut(n / 2);
-        let (low_prime, high_prime) = coeffs_prime.split_at_mut(n / 2);
+        let (low, high) = coeffs.split_at_mut(half_n);
+        let (low_prime, high_prime) = coeffs_prime.split_at_mut(half_n);
 
         join(
-            || self.enter(low, low_prime, k - 1),
-            || self.enter(high, high_prime, k - 1),
+            || self.enter(low, low_prime, k - 1, thread_log),
+            || self.enter(high, high_prime, k - 1, thread_log),
         );
 
         low_prime.copy_from_slice(low);
@@ -80,24 +86,23 @@ impl EcFft {
 
         let cache = &self.caches[self.max_k - k];
 
-        coeffs
-            .iter_mut()
-            .step_by(2)
-            .zip(cache.powered_coset.iter().step_by(2))
-            .zip(low_prime.iter())
-            .zip(high_prime.iter())
-            .for_each(|(((a, b), c), d)| *a = c + b * d);
-
-        cache.extend(low_prime, high_prime);
-
-        coeffs
-            .iter_mut()
-            .skip(1)
-            .step_by(2)
-            .zip(cache.powered_coset.iter().skip(1).step_by(2))
-            .zip(low_prime.iter())
-            .zip(high_prime.iter())
-            .for_each(|(((a, b), c), d)| *a = c + b * d);
+        poly_inversion(
+            coeffs,
+            &cache.powered_coset,
+            low_prime,
+            high_prime,
+            0,
+            k > thread_log,
+        );
+        low_degree_extention(low_prime, high_prime, half_n, k, 0, &cache, thread_log);
+        poly_inversion(
+            coeffs,
+            &cache.powered_coset,
+            low_prime,
+            high_prime,
+            1,
+            k > thread_log,
+        );
     }
 
     #[cfg(test)]

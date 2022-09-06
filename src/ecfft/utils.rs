@@ -1,7 +1,7 @@
 use super::isogeny::Isogeny;
 
 use pairing::{arithmetic::BaseExt, bn256::Fq as Fp};
-use rayon::join;
+use rayon::{join, prelude::*};
 
 #[derive(Clone, Debug)]
 pub(crate) struct EcFftCache {
@@ -90,10 +90,16 @@ impl EcFftCache {
     }
 
     // evaluate n/2 size of polynomial on n size coset
-    pub(crate) fn extend(&self, poly: &mut [Fp], poly_prime: &mut [Fp]) {
+    pub(crate) fn extend(
+        &self,
+        poly: &mut [Fp],
+        poly_prime: &mut [Fp],
+        k: usize,
+        thread_log: usize,
+    ) {
         let n = 1 << (self.k - 1);
 
-        low_degree_extention(poly, poly_prime, n, 0, &self);
+        low_degree_extention(poly, poly_prime, n, k, 0, &self, thread_log);
     }
 }
 
@@ -121,49 +127,134 @@ impl FfTree {
 }
 
 // low degree extention using divide and conquer algorithm
-fn low_degree_extention(
+pub(crate) fn low_degree_extention(
     coeffs: &mut [Fp],
     coeffs_prime: &mut [Fp],
     n: usize,
+    k: usize,
     depth: usize,
     caches: &EcFftCache,
+    thread_log: usize,
 ) {
     if n == 1 {
         return;
     }
 
+    let half_n = n / 2;
     let cache = caches.get_tree(depth);
-    let (left, right) = coeffs.split_at_mut(n / 2);
-    let (left_prime, right_prime) = coeffs_prime.split_at_mut(n / 2);
-    matrix_arithmetic(left, right, left_prime, right_prime, cache.get_inv_factor());
-    join(
-        || low_degree_extention(left, left_prime, n / 2, depth + 1, caches),
-        || low_degree_extention(right, right_prime, n / 2, depth + 1, caches),
+    let (left, right) = coeffs.split_at_mut(half_n);
+    let (left_prime, right_prime) = coeffs_prime.split_at_mut(half_n);
+    matrix_arithmetic(
+        left,
+        right,
+        left_prime,
+        right_prime,
+        cache.get_inv_factor(),
+        k > thread_log,
     );
-    matrix_arithmetic(left, right, left_prime, right_prime, cache.get_factor());
+    join(
+        || {
+            low_degree_extention(
+                left,
+                left_prime,
+                half_n,
+                k - 1,
+                depth + 1,
+                caches,
+                thread_log,
+            )
+        },
+        || {
+            low_degree_extention(
+                right,
+                right_prime,
+                half_n,
+                k - 1,
+                depth + 1,
+                caches,
+                thread_log,
+            )
+        },
+    );
+    matrix_arithmetic(
+        left,
+        right,
+        left_prime,
+        right_prime,
+        cache.get_factor(),
+        k > thread_log,
+    );
 }
 
+// matrix arithmetic with factor
 pub(crate) fn matrix_arithmetic(
     left: &mut [Fp],
     right: &mut [Fp],
     left_prime: &mut [Fp],
     right_prime: &mut [Fp],
     factor: &Vec<((Fp, Fp), (Fp, Fp))>,
+    is_parallel: bool,
 ) {
-    left.iter_mut()
-        .zip(right.iter_mut())
-        .zip(left_prime.iter_mut())
-        .zip(right_prime.iter_mut())
-        .zip(factor.iter())
-        .for_each(|((((a, b), c), d), e)| {
-            let ((f0, f1), (f2, f3)) = e;
-            let (x, y) = (f0 * *a + f1 * *b, f2 * *a + f3 * *b);
-            *a = x;
-            *b = y;
-            let (x, y) = (f0 * *c + f1 * *d, f2 * *c + f3 * *d);
-            *c = x;
-            *d = y;
-        })
+    if is_parallel {
+        left.par_iter_mut()
+            .zip(right.par_iter_mut())
+            .zip(left_prime.par_iter_mut())
+            .zip(right_prime.par_iter_mut())
+            .zip(factor.par_iter())
+            .for_each(|((((a, b), c), d), e)| {
+                let ((f0, f1), (f2, f3)) = e;
+                let tmp = f2 * *a + f3 * *b;
+                *a = f0 * *a + f1 * *b;
+                *b = tmp;
+                let tmp = f2 * *c + f3 * *d;
+                *c = f0 * *c + f1 * *d;
+                *d = tmp;
+            })
+    } else {
+        left.iter_mut()
+            .zip(right.iter_mut())
+            .zip(left_prime.iter_mut())
+            .zip(right_prime.iter_mut())
+            .zip(factor.iter())
+            .for_each(|((((a, b), c), d), e)| {
+                let ((f0, f1), (f2, f3)) = e;
+                let tmp = f2 * *a + f3 * *b;
+                *a = f0 * *a + f1 * *b;
+                *b = tmp;
+                let tmp = f2 * *c + f3 * *d;
+                *c = f0 * *c + f1 * *d;
+                *d = tmp;
+            })
+    }
+}
+
+pub(crate) fn poly_inversion(
+    coeffs: &mut [Fp],
+    powered_coset: &Vec<Fp>,
+    low: &mut [Fp],
+    high: &mut [Fp],
+    skip: usize,
+    is_parallel: bool,
+) {
+    if is_parallel {
+        coeffs
+            .par_iter_mut()
+            .skip(skip)
+            .step_by(2)
+            .zip(powered_coset.par_iter().skip(skip).step_by(2))
+            .zip(low.par_iter())
+            .zip(high.par_iter())
+            .for_each(|(((a, b), c), d)| *a = c + b * d);
+    } else {
+        coeffs
+            .iter_mut()
+            .skip(skip)
+            .step_by(2)
+            .zip(powered_coset.iter().skip(skip).step_by(2))
+            .zip(low.iter())
+            .zip(high.iter())
+            .for_each(|(((a, b), c), d)| *a = c + b * d);
+    }
 }
 
 #[cfg(test)]
@@ -171,6 +262,7 @@ mod tests {
     use super::{EcFftCache, Isogeny};
     use crate::test::{arb_poly_fq, layer_coset};
     use proptest::prelude::*;
+    use rayon::current_num_threads;
 
     #[test]
     fn test_isogeny_and_domain() {
@@ -241,7 +333,7 @@ mod tests {
             let evals_s_prime = poly_a.to_point_value(&s_prime);
             let mut evals_s_alt = poly_b.to_point_value(&s);
             let evals_s_prime_alt = poly_b.to_point_value(&s_prime);
-            ecfft_params.extend(&mut evals_s.values, &mut evals_s_alt.values);
+            ecfft_params.extend(&mut evals_s.values, &mut evals_s_alt.values, k, current_num_threads());
 
             assert_eq!(evals_s, evals_s_prime);
             assert_eq!(evals_s_alt, evals_s_prime_alt);
