@@ -90,16 +90,10 @@ impl EcFftCache {
     }
 
     // evaluate n/2 size of polynomial on n size coset
-    pub(crate) fn extend(
-        &self,
-        poly: &mut [Fp],
-        poly_prime: &mut [Fp],
-        k: usize,
-        thread_log: usize,
-    ) {
+    pub(crate) fn extend(&self, poly: Vec<Fp>, k: usize, thread_log: usize) -> Vec<Fp> {
         let n = 1 << (self.k - 1);
 
-        low_degree_extention(poly, poly_prime, n, k, 0, &self, thread_log);
+        low_degree_extention(poly, n, k, 0, &self, thread_log)
     }
 }
 
@@ -128,111 +122,69 @@ impl FfTree {
 
 // low degree extention using divide and conquer algorithm
 pub(crate) fn low_degree_extention(
-    coeffs: &mut [Fp],
-    coeffs_prime: &mut [Fp],
+    coeffs: Vec<Fp>,
     n: usize,
     k: usize,
     depth: usize,
     caches: &EcFftCache,
     thread_log: usize,
-) {
+) -> Vec<Fp> {
     if n == 1 {
-        return;
+        return coeffs;
     }
 
     let half_n = n / 2;
     let cache = caches.get_tree(depth);
-    let (left, right) = coeffs.split_at_mut(half_n);
-    let (left_prime, right_prime) = coeffs_prime.split_at_mut(half_n);
-    matrix_arithmetic(
-        left,
-        right,
-        left_prime,
-        right_prime,
+    let (left, right) = coeffs.split_at(half_n);
+    let (left, right) = matrix_arithmetic(
+        left.to_vec(),
+        right.to_vec(),
         cache.get_inv_factor(),
         k > thread_log,
     );
-    join(
-        || {
-            low_degree_extention(
-                left,
-                left_prime,
-                half_n,
-                k - 1,
-                depth + 1,
-                caches,
-                thread_log,
-            )
-        },
-        || {
-            low_degree_extention(
-                right,
-                right_prime,
-                half_n,
-                k - 1,
-                depth + 1,
-                caches,
-                thread_log,
-            )
-        },
+    let (left, right) = join(
+        || low_degree_extention(left, half_n, k - 1, depth + 1, caches, thread_log),
+        || low_degree_extention(right, half_n, k - 1, depth + 1, caches, thread_log),
     );
-    matrix_arithmetic(
-        left,
-        right,
-        left_prime,
-        right_prime,
-        cache.get_factor(),
-        k > thread_log,
-    );
+    let (left, right) = matrix_arithmetic(left, right, cache.get_factor(), k > thread_log);
+    [left, right].concat()
 }
 
 // matrix arithmetic with factor
 pub(crate) fn matrix_arithmetic(
-    left: &mut [Fp],
-    right: &mut [Fp],
-    left_prime: &mut [Fp],
-    right_prime: &mut [Fp],
+    mut left: Vec<Fp>,
+    mut right: Vec<Fp>,
     factor: &Vec<((Fp, Fp), (Fp, Fp))>,
     is_parallel: bool,
-) {
+) -> (Vec<Fp>, Vec<Fp>) {
     if is_parallel {
         left.par_iter_mut()
             .zip(right.par_iter_mut())
-            .zip(left_prime.par_iter_mut())
-            .zip(right_prime.par_iter_mut())
             .zip(factor.par_iter())
-            .for_each(|((((a, b), c), d), e)| {
+            .map(|((a, b), e)| {
                 let ((f0, f1), (f2, f3)) = e;
                 let tmp = f2 * *a + f3 * *b;
-                *a = f0 * *a + f1 * *b;
-                *b = tmp;
-                let tmp = f2 * *c + f3 * *d;
-                *c = f0 * *c + f1 * *d;
-                *d = tmp;
+                (f0 * *a + f1 * *b, tmp)
             })
+            .unzip()
     } else {
         left.iter_mut()
             .zip(right.iter_mut())
-            .zip(left_prime.iter_mut())
-            .zip(right_prime.iter_mut())
             .zip(factor.iter())
-            .for_each(|((((a, b), c), d), e)| {
+            .map(|((a, b), e)| {
                 let ((f0, f1), (f2, f3)) = e;
                 let tmp = f2 * *a + f3 * *b;
-                *a = f0 * *a + f1 * *b;
-                *b = tmp;
-                let tmp = f2 * *c + f3 * *d;
-                *c = f0 * *c + f1 * *d;
-                *d = tmp;
+                (f0 * *a + f1 * *b, tmp)
             })
+            .unzip()
     }
 }
 
 pub(crate) fn poly_inversion(
     coeffs: &mut [Fp],
     powered_coset: &Vec<Fp>,
-    low: &mut [Fp],
-    high: &mut [Fp],
+    low: Vec<Fp>,
+    high: Vec<Fp>,
     skip: usize,
     is_parallel: bool,
 ) {
@@ -324,19 +276,15 @@ mod tests {
         fn test_extend_operation(k in 1usize..10) {
             let depth = 14 - k;
             let poly_a = arb_poly_fq(k - 1);
-            let poly_b = arb_poly_fq(k - 1);
             let coset = layer_coset(depth);
             let ecfft_params = EcFftCache::new(k, coset);
             let cache = ecfft_params.get_tree(0);
             let (s, s_prime) = cache.domain.clone();
             let mut evals_s = poly_a.to_point_value(&s);
             let evals_s_prime = poly_a.to_point_value(&s_prime);
-            let mut evals_s_alt = poly_b.to_point_value(&s);
-            let evals_s_prime_alt = poly_b.to_point_value(&s_prime);
-            ecfft_params.extend(&mut evals_s.values, &mut evals_s_alt.values, k, current_num_threads());
+            let result = ecfft_params.extend(evals_s.values, k, current_num_threads());
 
-            assert_eq!(evals_s, evals_s_prime);
-            assert_eq!(evals_s_alt, evals_s_prime_alt);
+            assert_eq!(result, evals_s_prime.values);
         }
     }
 }

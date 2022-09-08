@@ -86,23 +86,22 @@ impl EcFft {
 
         let cache = &self.caches[self.max_k - k];
 
-        poly_inversion(
-            coeffs,
-            &cache.powered_coset,
-            low_prime,
-            high_prime,
-            0,
-            k > thread_log,
+        let (low_after_prime, high_after_prime) = join(
+            || low_degree_extention(low.to_vec(), half_n, k, 0, &cache, thread_log),
+            || low_degree_extention(high.to_vec(), half_n, k, 0, &cache, thread_log),
         );
-        low_degree_extention(low_prime, high_prime, half_n, k, 0, &cache, thread_log);
-        poly_inversion(
-            coeffs,
-            &cache.powered_coset,
-            low_prime,
-            high_prime,
-            1,
-            k > thread_log,
-        );
+
+        coeffs
+            .chunks_mut(2)
+            .zip(low_prime.iter())
+            .zip(high_prime.iter())
+            .zip(low_after_prime.iter())
+            .zip(high_after_prime.iter())
+            .zip(cache.powered_coset.chunks(2))
+            .for_each(|(((((coeffs, a), b), c), d), e)| {
+                coeffs[0] = a + e[0] * b;
+                coeffs[1] = c + e[1] * d;
+            });
     }
 
     #[cfg(test)]
