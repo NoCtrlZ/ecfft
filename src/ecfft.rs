@@ -5,7 +5,7 @@ mod utils;
 
 use crate::polynomial::{Coefficients, PointValue, Polynomial};
 pub(crate) use curve::Ep;
-use utils::{low_degree_extention, poly_inversion, EcFftCache};
+use utils::{integrate_evaluation, EcFftCache};
 
 use pairing::bn256::Fq as Fp;
 use rayon::{current_num_threads, join};
@@ -51,7 +51,8 @@ impl EcFft {
     ) -> Polynomial<Fp, PointValue> {
         assert!(k <= self.max_k);
 
-        self.enter(&mut coeffs.values, k, 1 << current_num_threads());
+        let thread_log = 1 << current_num_threads();
+        self.enter(&mut coeffs.values, k, thread_log);
         Polynomial {
             values: coeffs.values,
             _marker: PhantomData,
@@ -59,40 +60,34 @@ impl EcFft {
     }
 
     fn enter(&self, coeffs: &mut [Fp], k: usize, thread_log: usize) {
-        let n = 1 << k;
-        let half_n = n / 2;
-
-        if n == 1 {
+        if k == 0 {
             return;
         }
 
+        let next_k = k - 1;
+        let half_n = 1 << next_k;
         let (low, high) = coeffs.split_at_mut(half_n);
 
         join(
-            || self.enter(low, k - 1, thread_log),
-            || self.enter(high, k - 1, thread_log),
+            || self.enter(low, next_k, thread_log),
+            || self.enter(high, next_k, thread_log),
         );
-
-        let (low_prime, high_prime) = (low.to_vec(), high.to_vec());
 
         let cache = &self.caches[self.max_k - k];
+        let (low_prime, high_prime) = (low.to_vec(), high.to_vec());
 
-        let (low_after_prime, high_after_prime) = join(
-            || low_degree_extention(low_prime.clone(), half_n, k, 0, &cache, thread_log),
-            || low_degree_extention(high_prime.clone(), half_n, k, 0, &cache, thread_log),
-        );
+        cache.extend(low, high, k);
 
-        coeffs
-            .chunks_mut(2)
-            .zip(low_prime.iter())
-            .zip(high_prime.iter())
-            .zip(low_after_prime.iter())
-            .zip(high_after_prime.iter())
-            .zip(cache.powered_coset.chunks(2))
-            .for_each(|(((((coeffs, a), b), c), d), e)| {
-                coeffs[0] = a + e[0] * b;
-                coeffs[1] = c + e[1] * d;
-            });
+        let (low, high) = (low.to_vec(), high.to_vec());
+
+        integrate_evaluation(
+            coeffs,
+            &cache.powered_coset,
+            low_prime,
+            high_prime,
+            low,
+            high,
+        )
     }
 
     #[cfg(test)]
