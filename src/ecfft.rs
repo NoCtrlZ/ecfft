@@ -51,21 +51,14 @@ impl EcFft {
     ) -> Polynomial<Fp, PointValue> {
         assert!(k <= self.max_k);
 
-        let mut coeffs_prime = coeffs.values.clone();
-
-        self.enter(
-            &mut coeffs.values,
-            &mut coeffs_prime,
-            k,
-            1 << current_num_threads(),
-        );
+        self.enter(&mut coeffs.values, k, 1 << current_num_threads());
         Polynomial {
             values: coeffs.values,
             _marker: PhantomData,
         }
     }
 
-    fn enter(&self, coeffs: &mut [Fp], coeffs_prime: &mut [Fp], k: usize, thread_log: usize) {
+    fn enter(&self, coeffs: &mut [Fp], k: usize, thread_log: usize) {
         let n = 1 << k;
         let half_n = n / 2;
 
@@ -74,21 +67,19 @@ impl EcFft {
         }
 
         let (low, high) = coeffs.split_at_mut(half_n);
-        let (low_prime, high_prime) = coeffs_prime.split_at_mut(half_n);
 
         join(
-            || self.enter(low, low_prime, k - 1, thread_log),
-            || self.enter(high, high_prime, k - 1, thread_log),
+            || self.enter(low, k - 1, thread_log),
+            || self.enter(high, k - 1, thread_log),
         );
 
-        low_prime.copy_from_slice(low);
-        high_prime.copy_from_slice(high);
+        let (low_prime, high_prime) = (low.to_vec(), high.to_vec());
 
         let cache = &self.caches[self.max_k - k];
 
         let (low_after_prime, high_after_prime) = join(
-            || low_degree_extention(low.to_vec(), half_n, k, 0, &cache, thread_log),
-            || low_degree_extention(high.to_vec(), half_n, k, 0, &cache, thread_log),
+            || low_degree_extention(low_prime.clone(), half_n, k, 0, &cache, thread_log),
+            || low_degree_extention(high_prime.clone(), half_n, k, 0, &cache, thread_log),
         );
 
         coeffs
