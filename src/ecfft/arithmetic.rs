@@ -12,7 +12,22 @@ pub(crate) fn serial_low_degree_extention(
     depth: usize,
     caches: &EcFftCache,
 ) {
-    if n == 1 {
+    if k == 2 {
+        let cache = caches.get_tree(depth);
+        let ((f0, f1), (f2, f3)) = cache.get_inv_factor()[0];
+        let tmp = f2 * coeffs[0] + f3 * coeffs[1];
+        coeffs[0] = f0 * coeffs[0] + f1 * coeffs[1];
+        coeffs[1] = tmp;
+        let tmp = f2 * coeffs_prime[0] + f3 * coeffs_prime[1];
+        coeffs_prime[0] = f0 * coeffs_prime[0] + f1 * coeffs_prime[1];
+        coeffs_prime[1] = tmp;
+        let ((f0, f1), (f2, f3)) = cache.get_factor()[0];
+        let tmp = f2 * coeffs[0] + f3 * coeffs[1];
+        coeffs[0] = f0 * coeffs[0] + f1 * coeffs[1];
+        coeffs[1] = tmp;
+        let tmp = f2 * coeffs_prime[0] + f3 * coeffs_prime[1];
+        coeffs_prime[0] = f0 * coeffs_prime[0] + f1 * coeffs_prime[1];
+        coeffs_prime[1] = tmp;
         return;
     }
 
@@ -20,6 +35,7 @@ pub(crate) fn serial_low_degree_extention(
     let cache = caches.get_tree(depth);
     let (left, right) = coeffs.split_at_mut(half_n);
     let (left_prime, right_prime) = coeffs_prime.split_at_mut(half_n);
+
     serial_matrix_arithmetic(left, right, left_prime, right_prime, cache.get_inv_factor());
     join(
         || serial_low_degree_extention(left, left_prime, half_n, k - 1, depth + 1, caches),
@@ -38,7 +54,22 @@ pub(crate) fn parallel_low_degree_extention(
     caches: &EcFftCache,
     thread_log: usize,
 ) {
-    if n == 1 {
+    if k == 2 {
+        let cache = caches.get_tree(depth);
+        let ((f0, f1), (f2, f3)) = cache.get_inv_factor()[0];
+        let tmp = f2 * coeffs[0] + f3 * coeffs[1];
+        coeffs[0] = f0 * coeffs[0] + f1 * coeffs[1];
+        coeffs[1] = tmp;
+        let tmp = f2 * coeffs_prime[0] + f3 * coeffs_prime[1];
+        coeffs_prime[0] = f0 * coeffs_prime[0] + f1 * coeffs_prime[1];
+        coeffs_prime[1] = tmp;
+        let ((f0, f1), (f2, f3)) = cache.get_factor()[0];
+        let tmp = f2 * coeffs[0] + f3 * coeffs[1];
+        coeffs[0] = f0 * coeffs[0] + f1 * coeffs[1];
+        coeffs[1] = tmp;
+        let tmp = f2 * coeffs_prime[0] + f3 * coeffs_prime[1];
+        coeffs_prime[0] = f0 * coeffs_prime[0] + f1 * coeffs_prime[1];
+        coeffs_prime[1] = tmp;
         return;
     }
 
@@ -49,13 +80,6 @@ pub(crate) fn parallel_low_degree_extention(
 
     if k > thread_log {
         parallel_matrix_arithmetic(left, right, left_prime, right_prime, cache.get_inv_factor());
-        join(
-            || serial_low_degree_extention(left, left_prime, half_n, k - 1, depth + 1, caches),
-            || serial_low_degree_extention(right, right_prime, half_n, k - 1, depth + 1, caches),
-        );
-        parallel_matrix_arithmetic(left, right, left_prime, right_prime, cache.get_factor());
-    } else {
-        serial_matrix_arithmetic(left, right, left_prime, right_prime, cache.get_inv_factor());
         join(
             || {
                 parallel_low_degree_extention(
@@ -79,6 +103,13 @@ pub(crate) fn parallel_low_degree_extention(
                     thread_log,
                 )
             },
+        );
+        parallel_matrix_arithmetic(left, right, left_prime, right_prime, cache.get_factor());
+    } else {
+        serial_matrix_arithmetic(left, right, left_prime, right_prime, cache.get_inv_factor());
+        join(
+            || serial_low_degree_extention(left, left_prime, half_n, k - 1, depth + 1, caches),
+            || serial_low_degree_extention(right, right_prime, half_n, k - 1, depth + 1, caches),
         );
         serial_matrix_arithmetic(left, right, left_prime, right_prime, cache.get_factor());
     }

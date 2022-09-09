@@ -52,7 +52,7 @@ impl EcFft {
     ) -> Polynomial<Fp, PointValue> {
         assert!(k <= self.max_k);
 
-        self.enter(&mut coeffs.values, k, 1 << current_num_threads());
+        self.enter(&mut coeffs.values, k, 1 << current_num_threads() + 2);
         Polynomial {
             values: coeffs.values,
             _marker: PhantomData,

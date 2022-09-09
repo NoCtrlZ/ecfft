@@ -83,8 +83,11 @@ impl EcFftCache {
 
     // evaluate n/2 size of polynomial on n size coset
     pub(crate) fn extend(&self, poly: &mut [Fp], poly_prime: &mut [Fp], k: usize) {
-        let n = 1 << (self.k - 1);
+        if k == 1 {
+            return;
+        }
 
+        let n = 1 << (self.k - 1);
         serial_low_degree_extention(poly, poly_prime, n, k, 0, &self);
     }
 
@@ -96,8 +99,11 @@ impl EcFftCache {
         k: usize,
         thread_log: usize,
     ) {
-        let n = 1 << (self.k - 1);
+        if k == 1 {
+            return;
+        }
 
+        let n = 1 << (self.k - 1);
         parallel_low_degree_extention(poly, poly_prime, n, k, 0, &self, thread_log);
     }
 }
