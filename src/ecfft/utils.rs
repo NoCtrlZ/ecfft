@@ -1,3 +1,5 @@
+use super::arithmetic::{parallel_low_degree_extention, serial_low_degree_extention};
+use super::fftree::FfTree;
 use super::isogeny::Isogeny;
 
 use pairing::{arithmetic::BaseExt, bn256::Fq as Fp};
@@ -9,16 +11,6 @@ pub(crate) struct EcFftCache {
     pub(crate) trees: Vec<FfTree>,
     pub(crate) coset: Vec<Fp>,
     pub(crate) powered_coset: Vec<Fp>,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct FfTree {
-    // evaluation domain same size with polynomial
-    domain: (Vec<Fp>, Vec<Fp>),
-    // factor for performing multiplication
-    factor: Vec<((Fp, Fp), (Fp, Fp))>,
-    // inverse factor for performing multiplication
-    inv_factor: Vec<((Fp, Fp), (Fp, Fp))>,
 }
 
 impl EcFftCache {
@@ -93,101 +85,21 @@ impl EcFftCache {
     pub(crate) fn extend(&self, poly: &mut [Fp], poly_prime: &mut [Fp], k: usize) {
         let n = 1 << (self.k - 1);
 
-        low_degree_extention(poly, poly_prime, n, k, 0, &self);
-    }
-}
-
-impl FfTree {
-    #[cfg(test)]
-    pub(crate) fn get_domain(&self) -> &(Vec<Fp>, Vec<Fp>) {
-        &self.domain
+        serial_low_degree_extention(poly, poly_prime, n, k, 0, &self);
     }
 
-    pub(crate) fn get_factor(&self) -> &Vec<((Fp, Fp), (Fp, Fp))> {
-        &self.factor
+    // evaluate n/2 size of polynomial on n size coset
+    pub(crate) fn par_extend(
+        &self,
+        poly: &mut [Fp],
+        poly_prime: &mut [Fp],
+        k: usize,
+        thread_log: usize,
+    ) {
+        let n = 1 << (self.k - 1);
+
+        parallel_low_degree_extention(poly, poly_prime, n, k, 0, &self, thread_log);
     }
-
-    pub(crate) fn get_inv_factor(&self) -> &Vec<((Fp, Fp), (Fp, Fp))> {
-        &self.inv_factor
-    }
-
-    fn last_tree(s: Vec<Fp>, s_prime: Vec<Fp>) -> Self {
-        FfTree {
-            domain: (s, s_prime),
-            factor: vec![],
-            inv_factor: vec![],
-        }
-    }
-}
-
-// low degree extention using divide and conquer algorithm
-pub(crate) fn low_degree_extention(
-    coeffs: &mut [Fp],
-    coeffs_prime: &mut [Fp],
-    n: usize,
-    k: usize,
-    depth: usize,
-    caches: &EcFftCache,
-) {
-    if n == 1 {
-        return;
-    }
-
-    let half_n = n / 2;
-    let cache = caches.get_tree(depth);
-    let (left, right) = coeffs.split_at_mut(half_n);
-    let (left_prime, right_prime) = coeffs_prime.split_at_mut(half_n);
-    matrix_arithmetic(left, right, left_prime, right_prime, cache.get_inv_factor());
-    join(
-        || low_degree_extention(left, left_prime, half_n, k - 1, depth + 1, caches),
-        || low_degree_extention(right, right_prime, half_n, k - 1, depth + 1, caches),
-    );
-    matrix_arithmetic(left, right, left_prime, right_prime, cache.get_factor());
-}
-
-// matrix arithmetic with factor
-pub(crate) fn matrix_arithmetic(
-    left: &mut [Fp],
-    right: &mut [Fp],
-    left_prime: &mut [Fp],
-    right_prime: &mut [Fp],
-    factor: &Vec<((Fp, Fp), (Fp, Fp))>,
-) {
-    left.iter_mut()
-        .zip(right.iter_mut())
-        .zip(left_prime.iter_mut())
-        .zip(right_prime.iter_mut())
-        .zip(factor.iter())
-        .for_each(|((((a, b), c), d), e)| {
-            let ((f0, f1), (f2, f3)) = e;
-            let tmp = f2 * *a + f3 * *b;
-            *a = f0 * *a + f1 * *b;
-            *b = tmp;
-            let tmp = f2 * *c + f3 * *d;
-            *c = f0 * *c + f1 * *d;
-            *d = tmp;
-        })
-}
-
-pub(crate) fn integrate_evaluation(
-    coeffs: &mut [Fp],
-    powered_coset: &Vec<Fp>,
-    low_prime: Vec<Fp>,
-    high_prime: Vec<Fp>,
-    low: Vec<Fp>,
-    high: Vec<Fp>,
-) {
-    coeffs
-        .chunks_mut(2)
-        .zip(low_prime.iter())
-        .zip(high_prime.iter())
-        .zip(low.iter())
-        .zip(high.iter())
-        .zip(powered_coset.chunks(2))
-        .for_each(|(((((coeffs, a), b), c), d), e)| {
-            coeffs[0] = a + e[0] * b;
-            coeffs[1] = c + e[1] * d;
-        });
 }
 
 #[cfg(test)]

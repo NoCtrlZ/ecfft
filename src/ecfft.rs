@@ -1,11 +1,13 @@
+mod arithmetic;
 mod behave;
 mod curve;
+mod fftree;
 mod isogeny;
 mod utils;
 
 use crate::polynomial::{Coefficients, PointValue, Polynomial};
 pub(crate) use curve::Ep;
-use utils::{integrate_evaluation, EcFftCache};
+use utils::EcFftCache;
 
 use pairing::bn256::Fq as Fp;
 use rayon::{current_num_threads, join};
@@ -24,7 +26,6 @@ impl EcFft {
     pub fn new() -> Self {
         let max_k = 14;
         let n = 1 << max_k;
-
         let acc = Ep::generator();
         let presentative = Ep::representative();
         let mut caches = Vec::new();
@@ -51,8 +52,7 @@ impl EcFft {
     ) -> Polynomial<Fp, PointValue> {
         assert!(k <= self.max_k);
 
-        let thread_log = 1 << current_num_threads();
-        self.enter(&mut coeffs.values, k, thread_log);
+        self.enter(&mut coeffs.values, k, 1 << current_num_threads());
         Polynomial {
             values: coeffs.values,
             _marker: PhantomData,
@@ -65,29 +65,34 @@ impl EcFft {
         }
 
         let next_k = k - 1;
-        let half_n = 1 << next_k;
-        let (low, high) = coeffs.split_at_mut(half_n);
-
+        let (low, high) = coeffs.split_at_mut(1 << next_k);
         join(
             || self.enter(low, next_k, thread_log),
             || self.enter(high, next_k, thread_log),
         );
 
-        let cache = &self.caches[self.max_k - k];
         let (low_prime, high_prime) = (low.to_vec(), high.to_vec());
+        let cache = &self.caches[self.max_k - k];
 
-        cache.extend(low, high, k);
+        if k > thread_log {
+            cache.par_extend(low, high, k, thread_log)
+        } else {
+            cache.extend(low, high, k);
+        }
 
         let (low, high) = (low.to_vec(), high.to_vec());
 
-        integrate_evaluation(
-            coeffs,
-            &cache.powered_coset,
-            low_prime,
-            high_prime,
-            low,
-            high,
-        )
+        coeffs
+            .chunks_mut(2)
+            .zip(low_prime.iter())
+            .zip(high_prime.iter())
+            .zip(low.iter())
+            .zip(high.iter())
+            .zip(cache.powered_coset.chunks(2))
+            .for_each(|(((((coeffs, a), b), c), d), e)| {
+                coeffs[0] = a + e[0] * b;
+                coeffs[1] = c + e[1] * d;
+            });
     }
 
     #[cfg(test)]
