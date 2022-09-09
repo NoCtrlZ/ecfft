@@ -76,6 +76,10 @@ impl EcFftCache {
         &self.trees[depth]
     }
 
+    pub(crate) fn get_last_tree(&self) -> &FfTree {
+        &self.trees[self.trees.len() - 2]
+    }
+
     #[cfg(test)]
     pub(crate) fn get_coset(&self) -> &Vec<Fp> {
         &self.coset
