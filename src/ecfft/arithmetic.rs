@@ -4,7 +4,7 @@ use pairing::bn256::Fq as Fp;
 use rayon::{join, prelude::*};
 
 // low degree extention using divide and conquer algorithm
-pub(crate) fn serial_low_degree_extention(
+pub(crate) fn low_degree_extention(
     coeffs: &mut [Fp],
     coeffs_prime: &mut [Fp],
     n: usize,
@@ -40,83 +40,10 @@ pub(crate) fn serial_low_degree_extention(
 
     serial_matrix_arithmetic(left, right, left_prime, right_prime, cache.get_inv_factor());
     join(
-        || serial_low_degree_extention(left, left_prime, half_n, k - 1, depth + 1, caches),
-        || serial_low_degree_extention(right, right_prime, half_n, k - 1, depth + 1, caches),
+        || low_degree_extention(left, left_prime, half_n, k - 1, depth + 1, caches),
+        || low_degree_extention(right, right_prime, half_n, k - 1, depth + 1, caches),
     );
     serial_matrix_arithmetic(left, right, left_prime, right_prime, cache.get_factor());
-}
-
-// low degree extention using divide and conquer algorithm
-pub(crate) fn parallel_low_degree_extention(
-    coeffs: &mut [Fp],
-    coeffs_prime: &mut [Fp],
-    n: usize,
-    k: usize,
-    depth: usize,
-    caches: &EcFftCache,
-    thread_log: usize,
-) {
-    if k == 2 {
-        let cache = caches.get_last_tree();
-        let (a, b) = coeffs.split_at_mut(1);
-        let (c, d) = coeffs_prime.split_at_mut(1);
-        matrix_arithmetic(
-            &mut a[0],
-            &mut b[0],
-            &mut c[0],
-            &mut d[0],
-            &cache.get_inv_factor()[0],
-        );
-        matrix_arithmetic(
-            &mut a[0],
-            &mut b[0],
-            &mut c[0],
-            &mut d[0],
-            &cache.get_factor()[0],
-        );
-        return;
-    }
-
-    let half_n = n / 2;
-    let cache = caches.get_tree(depth);
-    let (left, right) = coeffs.split_at_mut(half_n);
-    let (left_prime, right_prime) = coeffs_prime.split_at_mut(half_n);
-
-    if k > thread_log {
-        parallel_matrix_arithmetic(left, right, left_prime, right_prime, cache.get_inv_factor());
-        join(
-            || {
-                parallel_low_degree_extention(
-                    left,
-                    left_prime,
-                    half_n,
-                    k - 1,
-                    depth + 1,
-                    caches,
-                    thread_log,
-                )
-            },
-            || {
-                parallel_low_degree_extention(
-                    right,
-                    right_prime,
-                    half_n,
-                    k - 1,
-                    depth + 1,
-                    caches,
-                    thread_log,
-                )
-            },
-        );
-        parallel_matrix_arithmetic(left, right, left_prime, right_prime, cache.get_factor());
-    } else {
-        serial_matrix_arithmetic(left, right, left_prime, right_prime, cache.get_inv_factor());
-        join(
-            || serial_low_degree_extention(left, left_prime, half_n, k - 1, depth + 1, caches),
-            || serial_low_degree_extention(right, right_prime, half_n, k - 1, depth + 1, caches),
-        );
-        serial_matrix_arithmetic(left, right, left_prime, right_prime, cache.get_factor());
-    }
 }
 
 // matrix arithmetic with factor
@@ -132,22 +59,6 @@ pub fn serial_matrix_arithmetic(
         .zip(left_prime.iter_mut())
         .zip(right_prime.iter_mut())
         .zip(factor.iter())
-        .for_each(|((((a, b), c), d), e)| matrix_arithmetic(a, b, c, d, e))
-}
-
-// matrix arithmetic with factor
-pub fn parallel_matrix_arithmetic(
-    left: &mut [Fp],
-    right: &mut [Fp],
-    left_prime: &mut [Fp],
-    right_prime: &mut [Fp],
-    factor: &Vec<((Fp, Fp), (Fp, Fp))>,
-) {
-    left.par_iter_mut()
-        .zip(right.par_iter_mut())
-        .zip(left_prime.par_iter_mut())
-        .zip(right_prime.par_iter_mut())
-        .zip(factor.par_iter())
         .for_each(|((((a, b), c), d), e)| matrix_arithmetic(a, b, c, d, e))
 }
 

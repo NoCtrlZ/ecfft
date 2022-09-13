@@ -123,7 +123,7 @@ impl EcFft {
                 || self.par_enter(high, next_k, thread_log),
             );
             let (low_prime, high_prime) = (low.to_vec(), high.to_vec());
-            cache.par_extend(low, high, k, thread_log);
+            cache.extend(low, high, k);
             let (low, high) = (low.to_vec(), high.to_vec());
             parallel_integrate_evaluation(
                 coeffs,
