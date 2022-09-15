@@ -16,6 +16,10 @@ impl FfTree {
         &self.domain
     }
 
+    pub(crate) fn get_factors(&self) -> (&Vec<((Fp, Fp), (Fp, Fp))>, &Vec<((Fp, Fp), (Fp, Fp))>) {
+        (&self.factor, &self.inv_factor)
+    }
+
     pub(crate) fn get_factor(&self) -> &Vec<((Fp, Fp), (Fp, Fp))> {
         &self.factor
     }

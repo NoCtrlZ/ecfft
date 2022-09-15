@@ -1,4 +1,6 @@
-use super::arithmetic::low_degree_extention;
+use super::arithmetic::{
+    parallel_low_degree_extention, serial_low_degree_extention, serial_matrix_arithmetic,
+};
 use super::fftree::FfTree;
 use super::isogeny::Isogeny;
 
@@ -33,14 +35,14 @@ impl EcFftCache {
             .for_each(|((a, b), c)| {
                 *b = a[0];
                 *c = a[1];
-                powered_coset.push(a[0].pow(&[n / 2, 0, 0, 0]));
-                powered_coset.push(a[1].pow(&[n / 2, 0, 0, 0]));
+                powered_coset.push(a[0].pow(&[n >> 1, 0, 0, 0]));
+                powered_coset.push(a[1].pow(&[n >> 1, 0, 0, 0]));
             });
 
         for i in 1..k {
             let isogeny = Isogeny::new(i);
             let n = 1 << (k - i);
-            let half_n = n / 2;
+            let half_n = n >> 1;
             let exp = &[(half_n - 1) as u64, 0, 0, 0];
 
             let (inv_factor, factor) = join(
@@ -76,8 +78,9 @@ impl EcFftCache {
         &self.trees[depth]
     }
 
-    pub(crate) fn get_last_tree(&self) -> &FfTree {
-        &self.trees[self.trees.len() - 2]
+    pub(crate) fn get_last_tree(&self) -> (&((Fp, Fp), (Fp, Fp)), &((Fp, Fp), (Fp, Fp))) {
+        let (factor, inv_factor) = self.trees[self.trees.len() - 2].get_factors();
+        (&factor[0], &inv_factor[0])
     }
 
     #[cfg(test)]
@@ -92,7 +95,7 @@ impl EcFftCache {
         }
 
         let n = 1 << (self.k - 1);
-        low_degree_extention(poly, poly_prime, n, k, 0, &self);
+        serial_low_degree_extention(poly, poly_prime, n, k, 0, &self);
     }
 }
 
