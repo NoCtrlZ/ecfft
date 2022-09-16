@@ -52,12 +52,14 @@ impl EcFft {
         mut coeffs: Polynomial<Fp, Coefficients>,
     ) -> Polynomial<Fp, PointValue> {
         assert!(k <= self.max_k);
-        let thread_log = 1 << current_num_threads() + 2;
+        let thread_num = current_num_threads();
+        let thread_log = thread_num;
+        let is_parallel = k > thread_log;
 
-        if k > thread_log {
-            self.enter(&mut coeffs.values, k);
-        } else {
+        if is_parallel {
             self.par_enter(&mut coeffs.values, k, thread_log)
+        } else {
+            self.enter(&mut coeffs.values, k)
         }
 
         Polynomial {
@@ -102,11 +104,8 @@ impl EcFft {
 
     fn par_enter(&self, coeffs: &mut [Fp], k: usize, thread_log: usize) {
         if k == 1 {
-            let cache = &self.caches[self.max_k - k];
-            let (a, b) = (
-                cache.powered_coset[0] * coeffs[1],
-                cache.powered_coset[1] * coeffs[1],
-            );
+            let powered_coset = &self.caches[self.max_k - k].powered_coset;
+            let (a, b) = (powered_coset[0] * coeffs[1], powered_coset[1] * coeffs[1]);
             coeffs[1] = coeffs[0];
             coeffs[0] += a;
             coeffs[1] += b;
@@ -117,36 +116,21 @@ impl EcFft {
         let (low, high) = coeffs.split_at_mut(1 << next_k);
         let cache = &self.caches[self.max_k - k];
 
-        if k > thread_log {
-            join(
-                || self.par_enter(low, next_k, thread_log),
-                || self.par_enter(high, next_k, thread_log),
-            );
-            let (low_prime, high_prime) = (low.to_vec(), high.to_vec());
-            cache.extend(low, high, k);
-            let (low, high) = (low.to_vec(), high.to_vec());
-            parallel_integrate_evaluation(
-                coeffs,
-                low_prime,
-                high_prime,
-                low,
-                high,
-                &cache.powered_coset,
-            );
-        } else {
-            join(|| self.enter(low, next_k), || self.enter(high, next_k));
-            let (low_prime, high_prime) = (low.to_vec(), high.to_vec());
-            cache.extend(low, high, k);
-            let (low, high) = (low.to_vec(), high.to_vec());
-            serial_integrate_evaluation(
-                coeffs,
-                low_prime,
-                high_prime,
-                low,
-                high,
-                &cache.powered_coset,
-            );
-        }
+        join(
+            || self.par_enter(low, next_k, thread_log),
+            || self.par_enter(high, next_k, thread_log),
+        );
+        let (low_prime, high_prime) = (low.to_vec(), high.to_vec());
+        cache.par_extend(low, high, k);
+        let (low, high) = (low.to_vec(), high.to_vec());
+        serial_integrate_evaluation(
+            coeffs,
+            low_prime,
+            high_prime,
+            low,
+            high,
+            &cache.powered_coset,
+        );
     }
 
     #[cfg(test)]

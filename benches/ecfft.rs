@@ -12,7 +12,7 @@ use rand_core::OsRng;
 fn criterion_benchmark(c: &mut Criterion) {
     let mut enter_group = c.benchmark_group("ecfft_enter");
     let ecfft = EcFft::new();
-    for k in 1..15 {
+    for k in 10..15 {
         enter_group.bench_function(BenchmarkId::new("k", k), |b| {
             let poly_a = Polynomial::<Fq, Coefficients>::new(
                 (0..(1 << k)).map(|_| Fq::random(OsRng)).collect::<Vec<_>>(),

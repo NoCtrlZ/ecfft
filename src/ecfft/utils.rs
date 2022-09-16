@@ -1,6 +1,4 @@
-use super::arithmetic::{
-    parallel_low_degree_extention, serial_low_degree_extention, serial_matrix_arithmetic,
-};
+use super::arithmetic::{parallel_low_degree_extention, serial_low_degree_extention};
 use super::fftree::FfTree;
 use super::isogeny::Isogeny;
 
@@ -96,6 +94,16 @@ impl EcFftCache {
 
         let n = 1 << (self.k - 1);
         serial_low_degree_extention(poly, poly_prime, n, k, 0, &self);
+    }
+
+    // evaluate n/2 size of polynomial on n size coset
+    pub(crate) fn par_extend(&self, poly: &mut [Fp], poly_prime: &mut [Fp], k: usize) {
+        if k == 1 {
+            return;
+        }
+
+        let n = 1 << (self.k - 1);
+        parallel_low_degree_extention(poly, poly_prime, n, k, 0, &self);
     }
 }
 

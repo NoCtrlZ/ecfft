@@ -40,8 +40,8 @@ pub(crate) fn parallel_low_degree_extention(
     depth: usize,
     caches: &EcFftCache,
 ) {
-    if k == 2 {
-        bottom_poly_conversion(coeffs, coeffs_prime, caches.get_last_tree());
+    if k < 4 {
+        serial_low_degree_extention(coeffs, coeffs_prime, n, k, depth, caches);
         return;
     }
 
