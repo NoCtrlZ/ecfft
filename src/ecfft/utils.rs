@@ -182,10 +182,16 @@ mod tests {
             let evals_s_prime = poly_a.to_point_value(&s_prime);
             let mut evals_s_alt = poly_b.to_point_value(&s);
             let evals_s_prime_alt = poly_b.to_point_value(&s_prime);
+            let mut par_evals_s = evals_s.clone();
+            let mut par_evals_s_alt = evals_s_alt.clone();
+
             ecfft_params.extend(&mut evals_s.values, &mut evals_s_alt.values, k);
+            ecfft_params.par_extend(&mut par_evals_s.values, &mut par_evals_s_alt.values, k);
 
             assert_eq!(evals_s, evals_s_prime);
             assert_eq!(evals_s_alt, evals_s_prime_alt);
+            assert_eq!(par_evals_s, evals_s_prime);
+            assert_eq!(par_evals_s_alt, evals_s_prime_alt);
         }
     }
 }

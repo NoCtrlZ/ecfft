@@ -57,9 +57,9 @@ impl EcFft {
         let is_parallel = k > thread_log;
 
         if is_parallel {
-            self.par_enter(&mut coeffs.values, k, thread_log)
+            self.par_enter(&mut coeffs.values, k, thread_log);
         } else {
-            self.enter(&mut coeffs.values, k)
+            self.enter(&mut coeffs.values, k);
         }
 
         Polynomial {
@@ -88,10 +88,9 @@ impl EcFft {
 
         let (low_prime, high_prime) = (low.to_vec(), high.to_vec());
         let cache = &self.caches[self.max_k - k];
-
         cache.extend(low, high, k);
-
         let (low, high) = (low.to_vec(), high.to_vec());
+
         serial_integrate_evaluation(
             coeffs,
             low_prime,
@@ -120,9 +119,11 @@ impl EcFft {
             || self.par_enter(low, next_k, thread_log),
             || self.par_enter(high, next_k, thread_log),
         );
+
         let (low_prime, high_prime) = (low.to_vec(), high.to_vec());
         cache.par_extend(low, high, k);
         let (low, high) = (low.to_vec(), high.to_vec());
+
         serial_integrate_evaluation(
             coeffs,
             low_prime,
